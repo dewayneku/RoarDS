@@ -158,6 +158,8 @@ signals:
     void swapScreensToggle();
     void screenEmphasisToggle();
 
+    void windowMenuHotkey(int hotkey);
+
     void syncVolumeLevel();
 
 private:

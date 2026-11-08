@@ -94,6 +94,34 @@ static constexpr std::initializer_list<const char*> hk_general_labels =
 
 static_assert(hk_general.size() == hk_general_labels.size());
 
+static constexpr std::initializer_list<int> hk_menu =
+{
+    HK_SaveState1, HK_SaveState2, HK_SaveState3, HK_SaveState4,
+    HK_SaveState5, HK_SaveState6, HK_SaveState7, HK_SaveState8,
+    HK_SaveStateFile,
+    HK_LoadState1, HK_LoadState2, HK_LoadState3, HK_LoadState4,
+    HK_LoadState5, HK_LoadState6, HK_LoadState7, HK_LoadState8,
+    HK_LoadStateFile,
+    HK_UndoStateLoad,
+    HK_OpenROM,
+    HK_Quit
+};
+
+static constexpr std::initializer_list<const char*> hk_menu_labels =
+{
+    "Save state 1", "Save state 2", "Save state 3", "Save state 4",
+    "Save state 5", "Save state 6", "Save state 7", "Save state 8",
+    "Save state to file",
+    "Load state 1", "Load state 2", "Load state 3", "Load state 4",
+    "Load state 5", "Load state 6", "Load state 7", "Load state 8",
+    "Load state from file",
+    "Undo state load",
+    "Open ROM",
+    "Quit"
+};
+
+static_assert(hk_menu.size() == hk_menu_labels.size());
+
 
 namespace Ui { class InputConfigDialog; }
 class InputConfigDialog;
@@ -148,6 +176,7 @@ private:
     int keypadKeyMap[12], keypadJoyMap[12];
     int addonsKeyMap[hk_addons.size()], addonsJoyMap[hk_addons.size()];
     int hkGeneralKeyMap[hk_general.size()], hkGeneralJoyMap[hk_general.size()];
+    int hkMenuKeyMap[hk_menu.size()], hkMenuJoyMap[hk_menu.size()];
     int joystickID;
 };
 

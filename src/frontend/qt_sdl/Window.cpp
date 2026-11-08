@@ -244,7 +244,6 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
 
             actOpenROM = menu->addAction("Open ROM...");
             connect(actOpenROM, &QAction::triggered, this, &MainWindow::onOpenFile);
-            actOpenROM->setShortcut(QKeySequence(QKeySequence::StandardKey::Open));
 
             /*actOpenROMArchive = menu->addAction("Open ROM inside archive...");
             connect(actOpenROMArchive, &QAction::triggered, this, &MainWindow::onOpenFileArchive);
@@ -318,13 +317,11 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
                 for (int i = 1; i < 9; i++)
                 {
                     actSaveState[i] = submenu->addAction(QString("%1").arg(i));
-                    actSaveState[i]->setShortcut(QKeySequence(Qt::ShiftModifier | (Qt::Key_F1 + i - 1)));
                     actSaveState[i]->setData(QVariant(i));
                     connect(actSaveState[i], &QAction::triggered, this, &MainWindow::onSaveState);
                 }
 
                 actSaveState[0] = submenu->addAction("File...");
-                actSaveState[0]->setShortcut(QKeySequence(Qt::ShiftModifier | Qt::Key_F9));
                 actSaveState[0]->setData(QVariant(0));
                 connect(actSaveState[0], &QAction::triggered, this, &MainWindow::onSaveState);
             }
@@ -334,19 +331,16 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
                 for (int i = 1; i < 9; i++)
                 {
                     actLoadState[i] = submenu->addAction(QString("%1").arg(i));
-                    actLoadState[i]->setShortcut(QKeySequence(Qt::Key_F1 + i - 1));
                     actLoadState[i]->setData(QVariant(i));
                     connect(actLoadState[i], &QAction::triggered, this, &MainWindow::onLoadState);
                 }
 
                 actLoadState[0] = submenu->addAction("File...");
-                actLoadState[0]->setShortcut(QKeySequence(Qt::Key_F9));
                 actLoadState[0]->setData(QVariant(0));
                 connect(actLoadState[0], &QAction::triggered, this, &MainWindow::onLoadState);
             }
 
             actUndoStateLoad = menu->addAction("Undo state load");
-            actUndoStateLoad->setShortcut(QKeySequence(Qt::Key_F12));
             connect(actUndoStateLoad, &QAction::triggered, this, &MainWindow::onUndoStateLoad);
 
             menu->addSeparator();
@@ -360,7 +354,8 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
 
             actQuit = menu->addAction("Quit");
             connect(actQuit, &QAction::triggered, this, &MainWindow::onQuit);
-            actQuit->setShortcut(QKeySequence(QKeySequence::StandardKey::Quit));
+
+            updateMenuHotkeyLabels();
         }
         {
             QMenu * menu = menubar->addMenu("System");
@@ -1638,6 +1633,66 @@ void MainWindow::onQuit()
     close();
 }
 
+void MainWindow::onMenuHotkey(int hotkey)
+{
+    // the emu thread notifies every window of this instance;
+    // only one of them should act on it
+    if (emuInstance->getMainWindow() != this) return;
+    if (!hasMenu) return;
+
+    QAction* act = nullptr;
+    if (hotkey >= HK_SaveState1 && hotkey <= HK_SaveState8)
+        act = actSaveState[hotkey - HK_SaveState1 + 1];
+    else if (hotkey >= HK_LoadState1 && hotkey <= HK_LoadState8)
+        act = actLoadState[hotkey - HK_LoadState1 + 1];
+    else switch (hotkey)
+    {
+    case HK_SaveStateFile: act = actSaveState[0]; break;
+    case HK_LoadStateFile: act = actLoadState[0]; break;
+    case HK_UndoStateLoad: act = actUndoStateLoad; break;
+    case HK_OpenROM:       act = actOpenROM; break;
+    case HK_Quit:          act = actQuit; break;
+    }
+
+    // trigger() is a no-op for disabled actions, so e.g. saving
+    // a state with no game running is ignored, same as the menu
+    if (act) act->trigger();
+}
+
+QString MainWindow::hotkeyText(int hotkey)
+{
+    Config::Table keycfg = emuInstance->getLocalConfig().GetTable("Keyboard");
+    int key = keycfg.GetInt(EmuInstance::hotkeyNames[hotkey]);
+    if (key == -1) return "";
+
+    return QKeySequence(key & ~(1<<31)).toString(QKeySequence::NativeText);
+}
+
+void MainWindow::updateMenuHotkeyLabels()
+{
+    if (!hasMenu) return;
+
+    // Menu shortcuts are handled by the hotkey system (so they can also be
+    // bound to a controller). Text after a tab is drawn in the menu's
+    // shortcut column without registering a real Qt shortcut.
+    auto setLabel = [this](QAction* act, const QString& base, int hotkey)
+    {
+        QString key = hotkeyText(hotkey);
+        act->setText(key.isEmpty() ? base : (base + "\t" + key));
+    };
+
+    setLabel(actOpenROM, "Open ROM...", HK_OpenROM);
+    for (int i = 1; i < 9; i++)
+    {
+        setLabel(actSaveState[i], QString("%1").arg(i), HK_SaveState1 + i - 1);
+        setLabel(actLoadState[i], QString("%1").arg(i), HK_LoadState1 + i - 1);
+    }
+    setLabel(actSaveState[0], "File...", HK_SaveStateFile);
+    setLabel(actLoadState[0], "File...", HK_LoadStateFile);
+    setLabel(actUndoStateLoad, "Undo state load", HK_UndoStateLoad);
+    setLabel(actQuit, "Quit", HK_Quit);
+}
+
 
 void MainWindow::onPause(bool checked)
 {
@@ -1850,6 +1905,10 @@ void MainWindow::onOpenInputConfig()
 
 void MainWindow::onInputConfigFinished(int res)
 {
+    // bindings may have changed: refresh the shortcut column in every
+    // window belonging to this instance
+    emuInstance->doOnAllWindows([](MainWindow* win) { win->updateMenuHotkeyLabels(); });
+
     emuThread->emuUnpause();
 }
 

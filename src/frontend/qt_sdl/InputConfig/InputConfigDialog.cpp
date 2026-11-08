@@ -16,6 +16,7 @@
     with melonDS. If not, see http://www.gnu.org/licenses/.
 */
 
+#include <QScrollArea>
 #include <QGroupBox>
 #include <QLabel>
 #include <QKeyEvent>
@@ -73,8 +74,29 @@ InputConfigDialog::InputConfigDialog(QWidget* parent) : QDialog(parent), ui(new 
         i++;
     }
 
+    i = 0;
+    for (int hotkey : hk_menu)
+    {
+        const char* btn = EmuInstance::hotkeyNames[hotkey];
+        hkMenuKeyMap[i] = keycfg.GetInt(btn);
+        hkMenuJoyMap[i] = joycfg.GetInt(btn);
+        i++;
+    }
+
     populatePage(ui->tabAddons, hk_addons_labels, addonsKeyMap, addonsJoyMap);
     populatePage(ui->tabHotkeysGeneral, hk_general_labels, hkGeneralKeyMap, hkGeneralJoyMap);
+
+    // save state / menu shortcuts get their own tab, scrollable since the list is long
+    {
+        QWidget* menuPage = new QWidget();
+        populatePage(menuPage, hk_menu_labels, hkMenuKeyMap, hkMenuJoyMap);
+
+        QScrollArea* scroll = new QScrollArea();
+        scroll->setWidget(menuPage);
+        scroll->setWidgetResizable(true);
+        scroll->setFrameShape(QFrame::NoFrame);
+        ui->tabWidget->addTab(scroll, "Save states && menu");
+    }
 
     joystickID = instcfg.GetInt("JoystickID");
 
@@ -210,6 +232,15 @@ void InputConfigDialog::on_InputConfigDialog_accepted()
         const char* btn = EmuInstance::hotkeyNames[hotkey];
         keycfg.SetInt(btn, hkGeneralKeyMap[i]);
         joycfg.SetInt(btn, hkGeneralJoyMap[i]);
+        i++;
+    }
+
+    i = 0;
+    for (int hotkey : hk_menu)
+    {
+        const char* btn = EmuInstance::hotkeyNames[hotkey];
+        keycfg.SetInt(btn, hkMenuKeyMap[i]);
+        joycfg.SetInt(btn, hkMenuJoyMap[i]);
         i++;
     }
 

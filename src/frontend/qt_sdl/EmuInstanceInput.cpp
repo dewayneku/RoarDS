@@ -67,7 +67,29 @@ const char* EmuInstance::hotkeyNames[HK_MAX] =
     "HK_GuitarGripGreen",
     "HK_GuitarGripRed",
     "HK_GuitarGripYellow",
-    "HK_GuitarGripBlue"
+    "HK_GuitarGripBlue",
+
+    "HK_SaveState1",
+    "HK_SaveState2",
+    "HK_SaveState3",
+    "HK_SaveState4",
+    "HK_SaveState5",
+    "HK_SaveState6",
+    "HK_SaveState7",
+    "HK_SaveState8",
+    "HK_SaveStateFile",
+    "HK_LoadState1",
+    "HK_LoadState2",
+    "HK_LoadState3",
+    "HK_LoadState4",
+    "HK_LoadState5",
+    "HK_LoadState6",
+    "HK_LoadState7",
+    "HK_LoadState8",
+    "HK_LoadStateFile",
+    "HK_UndoStateLoad",
+    "HK_OpenROM",
+    "HK_Quit"
 };
 
 std::shared_ptr<SDL_mutex> EmuInstance::joyMutexGlobal = nullptr;
@@ -336,7 +358,7 @@ void EmuInstance::onKeyPress(QKeyEvent* event)
 
     for (int i = 0; i < HK_MAX; i++)
         if (keyHK == hkKeyMapping[i])
-            keyHotkeyMask |= (1<<i);
+            keyHotkeyMask |= (1ULL<<i);
 }
 
 void EmuInstance::onKeyRelease(QKeyEvent* event)
@@ -350,9 +372,14 @@ void EmuInstance::onKeyRelease(QKeyEvent* event)
         if (keyKP == keyMapping[i])
             keyInputMask |= (1<<i);
 
+    // Match hotkeys on the base key only: if a modifier is let go before
+    // the key itself (e.g. Shift released before F1 for Shift+F1), the
+    // release event no longer carries the modifier, and the hotkey would
+    // otherwise stay stuck down and never trigger again.
+    const int modmask = Qt::KeyboardModifierMask;
     for (int i = 0; i < HK_MAX; i++)
-        if (keyHK == hkKeyMapping[i])
-            keyHotkeyMask &= ~(1<<i);
+        if (hkKeyMapping[i] != -1 && (keyHK & ~modmask) == (hkKeyMapping[i] & ~modmask))
+            keyHotkeyMask &= ~(1ULL<<i);
 }
 
 void EmuInstance::keyReleaseAll()
@@ -450,7 +477,7 @@ void EmuInstance::inputProcess()
     {
         for (int i = 0; i < HK_MAX; i++)
             if (joystickButtonDown(hkJoyMapping[i]))
-                joyHotkeyMask |= (1 << i);
+                joyHotkeyMask |= (1ULL << i);
     }
 
     hotkeyMask = keyHotkeyMask | joyHotkeyMask;

@@ -77,6 +77,7 @@ void EmuThread::attachWindow(MainWindow* window)
     connect(this, SIGNAL(autoScreenSizingChange(int)), window->panel, SLOT(onAutoScreenSizingChanged(int)));
     connect(this, SIGNAL(windowFullscreenToggle()), window, SLOT(onFullscreenToggled()));
     connect(this, SIGNAL(screenEmphasisToggle()), window, SLOT(onScreenEmphasisToggled()));
+    connect(this, SIGNAL(windowMenuHotkey(int)), window, SLOT(onMenuHotkey(int)));
 
     if (window->winHasMenu())
     {
@@ -95,6 +96,7 @@ void EmuThread::detachWindow(MainWindow* window)
     disconnect(this, SIGNAL(autoScreenSizingChange(int)), window->panel, SLOT(onAutoScreenSizingChanged(int)));
     disconnect(this, SIGNAL(windowFullscreenToggle()), window, SLOT(onFullscreenToggled()));
     disconnect(this, SIGNAL(screenEmphasisToggle()), window, SLOT(onScreenEmphasisToggled()));
+    disconnect(this, SIGNAL(windowMenuHotkey(int)), window, SLOT(onMenuHotkey(int)));
 
     if (window->winHasMenu())
     {
@@ -167,6 +169,10 @@ void EmuThread::run()
 
         if (emuInstance->hotkeyPressed(HK_SwapScreens)) emit swapScreensToggle();
         if (emuInstance->hotkeyPressed(HK_SwapScreenEmphasis)) emit screenEmphasisToggle();
+
+        // menu actions (save/load state, open ROM, quit) run on the UI thread
+        for (int hk = HK_SaveState1; hk <= HK_Quit; hk++)
+            if (emuInstance->hotkeyPressed(hk)) emit windowMenuHotkey(hk);
 
         if (emuStatus == emuStatus_Running || emuStatus == emuStatus_FrameStep)
         {
