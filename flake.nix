@@ -65,8 +65,8 @@
 
         passthru = {
           exePath = if isDarwin then
-            "/Applications/melonDS.app/Contents/MacOS/melonDS"
-            else "/bin/melonDS";
+            "/Applications/RoarDS.app/Contents/MacOS/RoarDS"
+            else "/bin/RoarDS";
         };
       };
     in {

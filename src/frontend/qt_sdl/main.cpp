@@ -185,7 +185,7 @@ void pathInit()
 
 #if defined(__APPLE__)
     // On Apple platforms we may need to navigate outside an app bundle.
-    // The executable directory would be "melonDS.app/Contents/MacOS", so we need to go a total of three steps up.
+    // The executable directory would be "RoarDS.app/Contents/MacOS", so we need to go a total of three steps up.
     QDir bundledir(appdirpath);
     if (bundledir.cd("..") && bundledir.cd("..") && bundledir.dirName().endsWith(".app") && bundledir.cd(".."))
     {
@@ -206,8 +206,8 @@ void pathInit()
 #else
         QString confdir;
         QDir config(QStandardPaths::writableLocation(QStandardPaths::ConfigLocation));
-        config.mkdir("melonDS");
-        confdir = config.absolutePath() + QDir::separator() + "melonDS";
+        config.mkdir("RoarDS");
+        confdir = config.absolutePath() + QDir::separator() + "RoarDS";
         emuDirectory = confdir;
 #endif
     }
@@ -243,7 +243,7 @@ MelonApplication::MelonApplication(int& argc, char** argv)
 #if !defined(Q_OS_APPLE)
     setWindowIcon(QIcon(":/melon-icon"));
     #if defined(Q_OS_UNIX)
-        setDesktopFileName(QString("net.kuribo64.melonDS"));
+        setDesktopFileName(QString("io.github.dewayneku.RoarDS"));
     #endif
 #endif
 }
@@ -319,7 +319,7 @@ int main(int argc, char** argv)
     std::signal(SIGTERM, signalHandler);
 #endif
 
-    printf("melonDS " MELONDS_VERSION "\n");
+    printf("RoarDS " MELONDS_VERSION "\n");
     printf(MELONDS_URL "\n");
 
     // easter egg - not worth checking other cases for something so dumb
@@ -334,7 +334,7 @@ int main(int argc, char** argv)
     // http://stackoverflow.com/questions/14543333/joystick-wont-work-using-sdl
     SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
 
-    SDL_SetHint(SDL_HINT_APP_NAME, "melonDS");
+    SDL_SetHint(SDL_HINT_APP_NAME, "RoarDS");
 
     if (SDL_Init(SDL_INIT_HAPTIC) < 0)
     {
@@ -354,7 +354,7 @@ int main(int argc, char** argv)
         QString errorStr = "Failed to initialize SDL. This could indicate an issue with your audio driver.\n\nThe error was: ";
         errorStr += err;
 
-        QMessageBox::critical(nullptr, "melonDS", errorStr);
+        QMessageBox::critical(nullptr, "RoarDS", errorStr);
         return 1;
     }
 
@@ -365,8 +365,8 @@ int main(int argc, char** argv)
 
     if (!Config::Load())
         QMessageBox::critical(nullptr,
-                              "melonDS",
-                              "Unable to write to config.\nPlease check the write permissions of the folder you placed melonDS in.");
+                              "RoarDS",
+                              "Unable to write to config.\nPlease check the write permissions of the folder you placed RoarDS in.");
 
     camStarted[0] = false;
     camStarted[1] = false;

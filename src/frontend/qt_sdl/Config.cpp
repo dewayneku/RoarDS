@@ -25,6 +25,7 @@
 #include <filesystem>
 #include <regex>
 #include <QtCore/qnamespace.h>
+#include <QStandardPaths>
 #include "toml/toml.hpp"
 
 #include "Platform.h"
@@ -40,7 +41,11 @@ namespace Config
 using namespace melonDS;
 
 
-const char* kConfigFile = "melonDS.toml";
+const char* kConfigFile = "RoarDS.toml";
+
+// RoarDS is a fork of melonDS. On first run (no RoarDS.toml yet), settings are
+// imported once from an existing melonDS config. The melonDS file is only read.
+const char* kMelonDSConfigFile = "melonDS.toml";
 
 const char* kLegacyConfigFile = "melonDS.ini";
 const char* kLegacyUniqueConfigFile = "melonDS.%d.ini";
@@ -145,7 +150,7 @@ DefaultList<std::string> DefaultStrings =
 {
     {"DLDI.ImagePath",                  "dldi.bin"},
     {"DSi.SD.ImagePath",                "dsisd.bin"},
-    {"Instance*.Firmware.Username",     "melonDS"}
+    {"Instance*.Firmware.Username",     "RoarDS"}
 };
 
 DefaultList<double> DefaultDoubles =
@@ -809,6 +814,41 @@ bool LoadLegacy()
     return true;
 }
 
+// Looks for an existing melonDS config and, if one parses, loads it into RootTable.
+// Checked in order: melonDS.toml next to our own config (portable setups, or
+// RoarDS placed in a melonDS folder), then melonDS's standard config folder.
+static bool ImportMelonDSConfig()
+{
+    std::vector<std::string> candidates;
+    candidates.push_back(Platform::GetLocalFilePath(kMelonDSConfigFile));
+
+#if !(defined(__WIN32__) && defined(WIN32_PORTABLE))
+    QString confroot = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
+    if (!confroot.isEmpty())
+        candidates.push_back((confroot + "/melonDS/" + kMelonDSConfigFile).toStdString());
+#endif
+
+    for (const std::string& path : candidates)
+    {
+        if (!Platform::FileExists(path))
+            continue;
+
+        try
+        {
+            RootTable = toml::parse(std::filesystem::u8path(path));
+            Platform::Log(Platform::Info,"Imported settings from melonDS config: %s\n", path.c_str());
+            return true;
+        }
+        catch (std::exception&)
+        {
+            // unreadable or malformed: try the next one, or fall back to defaults
+            RootTable = toml::value();
+        }
+    }
+
+    return false;
+}
+
 bool Load()
 {
     auto cfgpath = Platform::GetLocalFilePath(kConfigFile);
@@ -819,7 +859,15 @@ bool Load()
     RootTable = toml::value();
 
     if (!Platform::FileExists(cfgpath))
+    {
+        if (ImportMelonDSConfig())
+        {
+            Save();
+            return true;
+        }
+
         return LoadLegacy();
+    }
 
     try
     {

@@ -23,7 +23,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>About melonDS</string>
+   <string>About RoarDS</string>
   </property>
   <property name="modal">
    <bool>false</bool>
@@ -76,7 +76,7 @@
         <enum>Qt::TextFormat::PlainText</enum>
        </property>
        <property name="pixmap">
-        <pixmap resource="../../../res/melon.qrc">:/melon-icon</pixmap>
+        <pixmap resource="../../../res/roards.qrc">:/melon-icon</pixmap>
        </property>
        <property name="scaledContents">
         <bool>true</bool>
@@ -108,7 +108,7 @@
           </font>
          </property>
          <property name="text">
-          <string>melonDS</string>
+          <string>RoarDS</string>
          </property>
         </widget>
        </item>
@@ -131,7 +131,7 @@
           <bool>true</bool>
          </property>
          <property name="text">
-          <string>By Arisotura, the melonDS team &lt;a href=&quot;https://github.com/melonDS-emu/melonDS/graphs/contributors&quot;&gt;and contributors&lt;/a&gt;.</string>
+          <string>Based on &lt;a href=&quot;https://melonds.kuribo64.net&quot;&gt;melonDS&lt;/a&gt; by Arisotura, the melonDS team &lt;a href=&quot;https://github.com/melonDS-emu/melonDS/graphs/contributors&quot;&gt;and contributors&lt;/a&gt;.</string>
          </property>
          <property name="openExternalLinks">
           <bool>true</bool>
@@ -162,7 +162,7 @@
           </font>
          </property>
          <property name="text">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Licensed under the GNU General Public License v3 or any newer version.&lt;/p&gt;&lt;p&gt;melonDS is intended only for use with software that you own.&lt;/p&gt;&lt;p&gt;The Nintendo DS and Nintendo DSi systems are the property of Nintendo.&lt;br /&gt;melonDS and the melonDS team are not affiliated with or endorsed by Nintendo.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Licensed under the GNU General Public License v3 or any newer version.&lt;/p&gt;&lt;p&gt;RoarDS is intended only for use with software that you own.&lt;/p&gt;&lt;p&gt;The Nintendo DS and Nintendo DSi systems are the property of Nintendo.&lt;br /&gt;RoarDS is not affiliated with or endorsed by Nintendo or the melonDS team.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="textFormat">
           <enum>Qt::TextFormat::RichText</enum>
@@ -244,7 +244,7 @@
   </layout>
  </widget>
  <resources>
-  <include location="../../../res/melon.qrc"/>
+  <include location="../../../res/roards.qrc"/>
  </resources>
  <connections>
   <connection>

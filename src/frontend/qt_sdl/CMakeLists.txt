@@ -53,7 +53,7 @@ set(SOURCES_QT_SDL
     ../glad/glad.c
     ../duckstation/gl/context.cpp
 
-    ${CMAKE_SOURCE_DIR}/res/melon.qrc
+    ${CMAKE_SOURCE_DIR}/res/roards.qrc
 
     CLI.h
     CLI.cpp
@@ -93,6 +93,8 @@ fix_interface_includes(PkgConfig::SDL2 PkgConfig::LibArchive)
 add_compile_definitions(ARCHIVE_SUPPORT_ENABLED)
 
 add_executable(melonDS ${SOURCES_QT_SDL})
+# the CMake target keeps its upstream name; the built program is RoarDS
+set_target_properties(melonDS PROPERTIES OUTPUT_NAME RoarDS)
 
 add_subdirectory("../../net"
     ${CMAKE_BINARY_DIR}/net)
@@ -202,8 +204,8 @@ if (WIN32)
     endif()
 
     string(REPLACE . , MELON_RC_VERSION ${melonDS_VERSION})
-    configure_file("${CMAKE_SOURCE_DIR}/res/melon.rc.in" "${CMAKE_BINARY_DIR}/res/melon.rc")
-    target_sources(melonDS PUBLIC "${CMAKE_BINARY_DIR}/res/melon.rc")
+    configure_file("${CMAKE_SOURCE_DIR}/res/roards.rc.in" "${CMAKE_BINARY_DIR}/res/roards.rc")
+    target_sources(melonDS PUBLIC "${CMAKE_BINARY_DIR}/res/roards.rc")
     target_include_directories(melonDS PRIVATE "${CMAKE_BINARY_DIR}/res")
 
     if (${ARCHITECTURE} STREQUAL x86_64)
@@ -231,13 +233,13 @@ endif()
 
 if (APPLE)
     # Copy icon into the bundle
-    set(RESOURCE_FILES "${CMAKE_SOURCE_DIR}/res/melon.icns")
+    set(RESOURCE_FILES "${CMAKE_SOURCE_DIR}/res/roards.icns")
     target_sources(melonDS PUBLIC "${RESOURCE_FILES}")
 
     set_target_properties(melonDS PROPERTIES
         MACOSX_BUNDLE true
-        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/res/melon.plist.in
-        OUTPUT_NAME melonDS
+        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/res/roards.plist.in
+        OUTPUT_NAME RoarDS
         RESOURCE "${RESOURCE_FILES}")
 
 
@@ -256,12 +258,12 @@ endif()
 
 if (UNIX AND NOT APPLE)
     foreach(SIZE 16 32 48 64 128 256)
-        install(FILES ${CMAKE_SOURCE_DIR}/res/icon/melon_${SIZE}x${SIZE}.png
+        install(FILES ${CMAKE_SOURCE_DIR}/res/icon/roards_${SIZE}x${SIZE}.png
             DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/${SIZE}x${SIZE}/apps
-            RENAME net.kuribo64.melonDS.png)
+            RENAME io.github.dewayneku.RoarDS.png)
     endforeach()
 
-    install(FILES ${CMAKE_SOURCE_DIR}/res/net.kuribo64.melonDS.desktop DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications)
+    install(FILES ${CMAKE_SOURCE_DIR}/res/io.github.dewayneku.RoarDS.desktop DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications)
     install(TARGETS melonDS BUNDLE DESTINATION ${CMAKE_BINARY_DIR} RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
     if (NOT USE_QT6)
