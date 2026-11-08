@@ -1,20 +1,25 @@
-<p align="center"><img src="https://raw.githubusercontent.com/melonDS-emu/melonDS/master/res/icon/melon_128x128.png"></p>
-<h2 align="center"><b>melonDS</b></h2>
+<p align="center"><img src="res/icon/roards_128x128.png"></p>
+<h2 align="center"><b>RoarDS</b></h2>
 <p align="center">
-<a href="http://melonds.kuribo64.net/" alt="melonDS website"><img src="https://img.shields.io/badge/website-melonds.kuribo64.net-%2331352e.svg"></a>
-<a href="http://melonds.kuribo64.net/downloads.php" alt="Release: 1.1"><img src="https://img.shields.io/badge/release-1.1-%235c913b.svg"></a>
 <a href="https://www.gnu.org/licenses/gpl-3.0" alt="License: GPLv3"><img src="https://img.shields.io/badge/License-GPL%20v3-%23ff554d.svg"></a>
-<a href="https://kiwiirc.com/client/irc.badnik.net/?nick=IRC-Source_?#melonds" alt="IRC channel: #melonds"><img src="https://img.shields.io/badge/IRC%20chat-%23melonds-%23dd2e44.svg"></a>
-<a href="https://discord.gg/pAMAtExcqV" alt="Discord"><img src="https://img.shields.io/badge/Discord-Kuribo64-7289da?logo=discord&logoColor=white"></a>
-<br>
-<a href="https://github.com/melonDS-emu/melonDS/actions/workflows/build-windows.yml?query=event%3Apush"><img src="https://github.com/melonDS-emu/melonDS/actions/workflows/build-windows.yml/badge.svg" /></a>
-<a href="https://github.com/melonDS-emu/melonDS/actions/workflows/build-ubuntu.yml?query=event%3Apush"><img src="https://github.com/melonDS-emu/melonDS/actions/workflows/build-ubuntu.yml/badge.svg" /></a>
-<a href="https://github.com/melonDS-emu/melonDS/actions/workflows/build-macos.yml?query=event%3Apush"><img src="https://github.com/melonDS-emu/melonDS/actions/workflows/build-macos.yml/badge.svg" /></a>
-<a href="https://github.com/melonDS-emu/melonDS/actions/workflows/build-bsd.yml?query=event%3Apush"><img src="https://github.com/melonDS-emu/melonDS/actions/workflows/build-bsd.yml/badge.svg" /></a>
 </p>
-DS emulator, sorta
 
-The goal is to do things right and fast, akin to blargSNES (but hopefully better). But also to, you know, have a fun challenge :)
+RoarDS is a Nintendo DS and DSi emulator. It's a fork of [melonDS](https://github.com/melonDS-emu/melonDS)
+by Arisotura and the melonDS team, focused on quality-of-life improvements that users have asked for.
+
+**What's different from melonDS so far**
+
+* Save/load state, undo state load, Open ROM and Quit are remappable hotkeys, and can be bound to a
+  keyboard key or a controller button (*Config → Input and hotkeys → Save states & menu*).
+
+**Coming from melonDS?** On first run, RoarDS copies your settings from `melonDS.toml` into its own
+`RoarDS.toml`. Your melonDS install and settings are never changed.
+
+RoarDS is not affiliated with or endorsed by the melonDS team or Nintendo. Please report RoarDS bugs
+[here](https://github.com/dewayneku/RoarDS/issues), not to melonDS.
+
+The rest of this README comes from melonDS and still applies to RoarDS.
+
 <hr>
 
 ## How to use

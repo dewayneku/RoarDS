@@ -6,7 +6,7 @@ obj
 *.o
 melon_grc.c
 melon_grc.h
-melon.rc
+roards.rc
 cmake-build*
 cmake-build-debug
 compile_commands.json
