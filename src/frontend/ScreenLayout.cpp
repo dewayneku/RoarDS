@@ -118,6 +118,113 @@ ScreenLayout::ScreenLayout()
     HybEnable = false;
     HybScreen = 0;
     HybPrevTouchScreen = 0;
+    OverlapEnable = false;
+    OverlapMainBottom = false;
+    OverlayRect[0] = OverlayRect[1] = OverlayRect[2] = OverlayRect[3] = 0;
+}
+
+// invert a 2x3 affine matrix (same layout as the M23_* helpers)
+static void M23_Invert(float* out, const float* m)
+{
+    float det = m[0] * m[3] - m[2] * m[1];
+    if (det == 0) { M23_Identity(out); return; }
+
+    float a = m[3] / det, b = -m[1] / det;
+    float c = -m[2] / det, d = m[0] / det;
+
+    out[0] = a; out[1] = b;
+    out[2] = c; out[3] = d;
+    out[4] = -(a * m[4] + c * m[5]);
+    out[5] = -(b * m[4] + d * m[5]);
+}
+
+// size of the 256x192 screen once a (centered) matrix is applied
+static void M23_ScreenExtent(const float* m, float& w, float& h)
+{
+    float xs[4] = {-128, 128, -128, 128};
+    float ys[4] = {-96, -96, 96, 96};
+    float minX = 1e9f, maxX = -1e9f, minY = 1e9f, maxY = -1e9f;
+    for (int i = 0; i < 4; i++)
+    {
+        float x = xs[i] * m[0] + ys[i] * m[2];
+        float y = xs[i] * m[1] + ys[i] * m[3];
+        minX = std::min(minX, x); maxX = std::max(maxX, x);
+        minY = std::min(minY, y); maxY = std::max(maxY, y);
+    }
+    w = maxX - minX;
+    h = maxY - minY;
+}
+
+void ScreenLayout::SetupOverlap(int screenWidth, int screenHeight,
+    ScreenRotation rotation,
+    bool integerScale,
+    bool swapScreens,
+    float topAspect, float botAspect)
+{
+    // the overlay is this fraction of the main screen's size
+    const float kOverlayScale = 1.f / 3.f;
+    // gap between the overlay and the edge of the main screen, in host pixels
+    const float kOverlayMargin = 8.f;
+
+    HybEnable = false;
+    TopEnable = BotEnable = true;
+    OverlapEnable = true;
+    OverlapMainBottom = swapScreens;
+
+    float* mainMtx = OverlapMainBottom ? BotScreenMtx : TopScreenMtx;
+    float* subMtx = OverlapMainBottom ? TopScreenMtx : BotScreenMtx;
+    float mainAspect = OverlapMainBottom ? botAspect : topAspect;
+    float subAspect = OverlapMainBottom ? topAspect : botAspect;
+
+    // centre each screen on the origin, apply aspect ratio and rotation
+    float rotmtx[6];
+    M23_Identity(rotmtx);
+    M23_RotateFast(rotmtx, rotation);
+
+    float* mtxs[2] = {mainMtx, subMtx};
+    float aspects[2] = {mainAspect, subAspect};
+    for (int i = 0; i < 2; i++)
+    {
+        M23_Identity(mtxs[i]);
+        M23_Translate(mtxs[i], -256/2, -192/2);
+        M23_Scale(mtxs[i], aspects[i], 1);
+        M23_Multiply(mtxs[i], rotmtx, mtxs[i]);
+    }
+
+    // main screen: as large as fits, centred
+    float mw, mh;
+    M23_ScreenExtent(mainMtx, mw, mh);
+    float mainScale = std::min(screenWidth / mw, screenHeight / mh);
+    if (integerScale && mainScale >= 1)
+        mainScale = floorf(mainScale);
+
+    M23_Scale(mainMtx, mainScale);
+    M23_Translate(mainMtx, screenWidth / 2.f, screenHeight / 2.f);
+
+    float mainRight = (screenWidth + mw * mainScale) / 2.f;
+    float mainBottom = (screenHeight + mh * mainScale) / 2.f;
+
+    // overlay: small, in the main screen's bottom-right corner
+    float sw, sh;
+    M23_ScreenExtent(subMtx, sw, sh);
+    float subScale = mainScale * kOverlayScale * (mw / sw < mh / sh ? mw / sw : mh / sh);
+    if (integerScale && subScale >= 1)
+        subScale = floorf(subScale);
+
+    float subW = sw * subScale, subH = sh * subScale;
+    float cx = mainRight - kOverlayMargin - subW / 2.f;
+    float cy = mainBottom - kOverlayMargin - subH / 2.f;
+
+    M23_Scale(subMtx, subScale);
+    M23_Translate(subMtx, cx, cy);
+
+    OverlayRect[0] = cx - subW / 2.f;
+    OverlayRect[1] = cy - subH / 2.f;
+    OverlayRect[2] = cx + subW / 2.f;
+    OverlayRect[3] = cy + subH / 2.f;
+
+    // touch: map host coordinates straight back through the bottom screen's transform
+    M23_Invert(TouchMtx, BotScreenMtx);
 }
 
 void ScreenLayout::Setup(int screenWidth, int screenHeight,
@@ -129,6 +236,13 @@ void ScreenLayout::Setup(int screenWidth, int screenHeight,
     bool swapScreens,
     float topAspect, float botAspect)
 {
+    OverlapEnable = false;
+    if (screenLayout == screenLayout_Overlap)
+    {
+        SetupOverlap(screenWidth, screenHeight, rotation, integerScale, swapScreens, topAspect, botAspect);
+        return;
+    }
+
     HybEnable = screenLayout == 3;
     if (HybEnable)
     {
@@ -449,6 +563,19 @@ void ScreenLayout::Setup(int screenWidth, int screenHeight,
 int ScreenLayout::GetScreenTransforms(float* out, int* kind)
 {
     int num = 0;
+
+    // overlap: draw the main screen first so the overlay ends up on top
+    if (OverlapEnable)
+    {
+        int order[2] = {OverlapMainBottom ? 1 : 0, OverlapMainBottom ? 0 : 1};
+        for (int k : order)
+        {
+            memcpy(out + 6*num, k == 0 ? TopScreenMtx : BotScreenMtx, sizeof(TopScreenMtx));
+            kind[num++] = k;
+        }
+        return num;
+    }
+
     if (TopEnable)
     {
         memcpy(out + 6*num, TopScreenMtx, sizeof(TopScreenMtx));
@@ -469,6 +596,16 @@ int ScreenLayout::GetScreenTransforms(float* out, int* kind)
 
 bool ScreenLayout::GetTouchCoords(int& x, int& y, bool clamp)
 {
+    // overlap with the bottom screen as main: a new touch on the top-screen
+    // overlay shouldn't reach the bottom screen underneath it
+    // (once a touch is in progress, clamp is set and dragging over it continues)
+    if (OverlapEnable && OverlapMainBottom && !clamp &&
+        x >= OverlayRect[0] && x < OverlayRect[2] &&
+        y >= OverlayRect[1] && y < OverlayRect[3])
+    {
+        return false;
+    }
+
     if (HybEnable && HybScreen == 1)
     {
         float vx = x;

@@ -11,6 +11,11 @@ by Arisotura and the melonDS team, focused on quality-of-life improvements that 
 
 * Save/load state, undo state load, Open ROM and Quit are remappable hotkeys, and can be bound to a
   keyboard key or a controller button (*Config → Input and hotkeys → Save states & menu*).
+* **Overlap** screen layout: the main screen fills the window and the other screen is shown small in
+  its corner, handy with widescreen patches. *Swap screens* picks which screen is the main one.
+* Custom screen gap of any size from 0 to 500 px (*View → Screen gap → Custom...*), applied instantly.
+* Hotkeys to cycle the screen layout and screen sizing (*Input and hotkeys → General hotkeys*).
+* Hotkeys respond to very quick taps, even with no game running.
 
 **Coming from melonDS?** On first run, RoarDS copies your settings from `melonDS.toml` into its own
 `RoarDS.toml`. Your melonDS install and settings are never changed.

@@ -20,6 +20,7 @@
 #define EMUINSTANCE_H
 
 #include <SDL2/SDL.h>
+#include <atomic>
 
 #include "Platform.h"
 #include "main.h"
@@ -57,7 +58,8 @@ enum
     HK_GuitarGripYellow,
     HK_GuitarGripBlue,
 
-    // menu actions (formerly hardcoded menu shortcuts)
+    // menu actions, handled on the UI thread by MainWindow::onMenuHotkey()
+    // (everything from HK_SaveState1 to the end of this list)
     // slots 1-8 must stay contiguous: code indexes them as HK_SaveState1 + (slot-1)
     HK_SaveState1,
     HK_SaveState2,
@@ -80,6 +82,8 @@ enum
     HK_UndoStateLoad,
     HK_OpenROM,
     HK_Quit,
+    HK_CycleScreenLayout,
+    HK_CycleScreenSizing,
 
     HK_MAX
 };
@@ -398,6 +402,9 @@ private:
 
     melonDS::u32 keyInputMask, joyInputMask;
     melonDS::u64 keyHotkeyMask, joyHotkeyMask;
+    // keyboard hotkey presses since the last inputProcess(), so a tap shorter
+    // than the polling interval (75ms when idle) is still seen
+    std::atomic<melonDS::u64> keyHotkeyLatch;
     melonDS::u64 hotkeyMask, lastHotkeyMask;
     melonDS::u64 hotkeyPress, hotkeyRelease;
 

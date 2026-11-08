@@ -89,7 +89,9 @@ const char* EmuInstance::hotkeyNames[HK_MAX] =
     "HK_LoadStateFile",
     "HK_UndoStateLoad",
     "HK_OpenROM",
-    "HK_Quit"
+    "HK_Quit",
+    "HK_CycleScreenLayout",
+    "HK_CycleScreenSizing"
 };
 
 std::shared_ptr<SDL_mutex> EmuInstance::joyMutexGlobal = nullptr;
@@ -109,6 +111,7 @@ void EmuInstance::inputInit()
     inputMask = 0xFFF;
 
     keyHotkeyMask = 0;
+    keyHotkeyLatch = 0;
     joyHotkeyMask = 0;
     hotkeyMask = 0;
     lastHotkeyMask = 0;
@@ -358,7 +361,10 @@ void EmuInstance::onKeyPress(QKeyEvent* event)
 
     for (int i = 0; i < HK_MAX; i++)
         if (keyHK == hkKeyMapping[i])
+        {
             keyHotkeyMask |= (1ULL<<i);
+            keyHotkeyLatch.fetch_or(1ULL<<i);
+        }
 }
 
 void EmuInstance::onKeyRelease(QKeyEvent* event)
@@ -386,6 +392,7 @@ void EmuInstance::keyReleaseAll()
 {
     keyInputMask = 0xFFF;
     keyHotkeyMask = 0;
+    keyHotkeyLatch = 0;
 }
 
 bool EmuInstance::joystickButtonDown(int val)
@@ -481,7 +488,9 @@ void EmuInstance::inputProcess()
     }
 
     hotkeyMask = keyHotkeyMask | joyHotkeyMask;
-    hotkeyPress = hotkeyMask & ~lastHotkeyMask;
+    // a latched press counts even if the key was already released again
+    // (the latch is only set on real key-down events; auto-repeat is filtered out)
+    hotkeyPress = (hotkeyMask & ~lastHotkeyMask) | keyHotkeyLatch.exchange(0);
     hotkeyRelease = lastHotkeyMask & ~hotkeyMask;
     lastHotkeyMask = hotkeyMask;
     SDL_UnlockMutex(joyMutex.get());
