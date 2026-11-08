@@ -86,6 +86,8 @@ public:
     void updateMPInterface(melonDS::MPInterfaceType type);
 
     void loadRecentFilesMenu(bool loadcfg);
+    void updateMenuHotkeyLabels();
+    QString hotkeyText(int hotkey);
     //void updateVideoSettings(bool glchange);
 
 protected:
@@ -116,6 +118,7 @@ private slots:
     void onUndoStateLoad();
     void onImportSavefile();
     void onQuit();
+    void onMenuHotkey(int hotkey);
 
     void onPause(bool checked);
     void onReset();

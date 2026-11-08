@@ -24,6 +24,7 @@
 #include <fstream>
 #include <filesystem>
 #include <regex>
+#include <QtCore/qnamespace.h>
 #include "toml/toml.hpp"
 
 #include "Platform.h"
@@ -50,6 +51,32 @@ DefaultList<int> DefaultInts =
 {
     {"Instance*.Keyboard", -1},
     {"Instance*.Joystick", -1},
+    // default bindings for the menu-action hotkeys, matching the shortcuts
+    // that used to be hardcoded in the menus
+    {"Instance*.Keyboard.HK_SaveState1", (int)Qt::Key_F1 | (int)Qt::ShiftModifier},
+    {"Instance*.Keyboard.HK_SaveState2", (int)Qt::Key_F2 | (int)Qt::ShiftModifier},
+    {"Instance*.Keyboard.HK_SaveState3", (int)Qt::Key_F3 | (int)Qt::ShiftModifier},
+    {"Instance*.Keyboard.HK_SaveState4", (int)Qt::Key_F4 | (int)Qt::ShiftModifier},
+    {"Instance*.Keyboard.HK_SaveState5", (int)Qt::Key_F5 | (int)Qt::ShiftModifier},
+    {"Instance*.Keyboard.HK_SaveState6", (int)Qt::Key_F6 | (int)Qt::ShiftModifier},
+    {"Instance*.Keyboard.HK_SaveState7", (int)Qt::Key_F7 | (int)Qt::ShiftModifier},
+    {"Instance*.Keyboard.HK_SaveState8", (int)Qt::Key_F8 | (int)Qt::ShiftModifier},
+    {"Instance*.Keyboard.HK_SaveStateFile", (int)Qt::Key_F9 | (int)Qt::ShiftModifier},
+    {"Instance*.Keyboard.HK_LoadState1", (int)Qt::Key_F1},
+    {"Instance*.Keyboard.HK_LoadState2", (int)Qt::Key_F2},
+    {"Instance*.Keyboard.HK_LoadState3", (int)Qt::Key_F3},
+    {"Instance*.Keyboard.HK_LoadState4", (int)Qt::Key_F4},
+    {"Instance*.Keyboard.HK_LoadState5", (int)Qt::Key_F5},
+    {"Instance*.Keyboard.HK_LoadState6", (int)Qt::Key_F6},
+    {"Instance*.Keyboard.HK_LoadState7", (int)Qt::Key_F7},
+    {"Instance*.Keyboard.HK_LoadState8", (int)Qt::Key_F8},
+    {"Instance*.Keyboard.HK_LoadStateFile", (int)Qt::Key_F9},
+    {"Instance*.Keyboard.HK_UndoStateLoad", (int)Qt::Key_F12},
+    {"Instance*.Keyboard.HK_OpenROM", (int)Qt::Key_O | (int)Qt::ControlModifier},
+#ifndef __WIN32__
+    // Windows has no standard Quit shortcut; elsewhere it's Ctrl+Q (Cmd+Q on macOS)
+    {"Instance*.Keyboard.HK_Quit", (int)Qt::Key_Q | (int)Qt::ControlModifier},
+#endif
     {"Instance*.Window*.Width", 256},
     {"Instance*.Window*.Height", 384},
     {"Screen.VSyncInterval", 1},

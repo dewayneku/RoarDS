@@ -56,8 +56,36 @@ enum
     HK_GuitarGripRed,
     HK_GuitarGripYellow,
     HK_GuitarGripBlue,
+
+    // menu actions (formerly hardcoded menu shortcuts)
+    // slots 1-8 must stay contiguous: code indexes them as HK_SaveState1 + (slot-1)
+    HK_SaveState1,
+    HK_SaveState2,
+    HK_SaveState3,
+    HK_SaveState4,
+    HK_SaveState5,
+    HK_SaveState6,
+    HK_SaveState7,
+    HK_SaveState8,
+    HK_SaveStateFile,
+    HK_LoadState1,
+    HK_LoadState2,
+    HK_LoadState3,
+    HK_LoadState4,
+    HK_LoadState5,
+    HK_LoadState6,
+    HK_LoadState7,
+    HK_LoadState8,
+    HK_LoadStateFile,
+    HK_UndoStateLoad,
+    HK_OpenROM,
+    HK_Quit,
+
     HK_MAX
 };
+
+// hotkey state is stored as bitmasks
+static_assert(HK_MAX <= 64, "too many hotkeys for a 64-bit mask");
 
 enum
 {
@@ -252,9 +280,9 @@ private:
 
     void inputProcess();
 
-    bool hotkeyDown(int id)     { return hotkeyMask    & (1<<id); }
-    bool hotkeyPressed(int id)  { return hotkeyPress   & (1<<id); }
-    bool hotkeyReleased(int id) { return hotkeyRelease & (1<<id); }
+    bool hotkeyDown(int id)     { return hotkeyMask    & (1ULL<<id); }
+    bool hotkeyPressed(int id)  { return hotkeyPress   & (1ULL<<id); }
+    bool hotkeyReleased(int id) { return hotkeyRelease & (1ULL<<id); }
 
     void loadRTCData();
     void saveRTCData();
@@ -369,9 +397,9 @@ private:
     std::shared_ptr<SDL_mutex> joyMutex;
 
     melonDS::u32 keyInputMask, joyInputMask;
-    melonDS::u32 keyHotkeyMask, joyHotkeyMask;
-    melonDS::u32 hotkeyMask, lastHotkeyMask;
-    melonDS::u32 hotkeyPress, hotkeyRelease;
+    melonDS::u64 keyHotkeyMask, joyHotkeyMask;
+    melonDS::u64 hotkeyMask, lastHotkeyMask;
+    melonDS::u64 hotkeyPress, hotkeyRelease;
 
     melonDS::u32 inputMask;
 
