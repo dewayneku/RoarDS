@@ -21,6 +21,8 @@ by Arisotura and the melonDS team, focused on quality-of-life improvements that 
   loads automatically whenever that controller is connected.
 * **Analog stick stylus**: move a stylus cursor around the touch screen with a stick (or keys) and tap
   or drag with a button (*Input and hotkeys → Stylus*). Speed follows how far the stick is pushed.
+* The game pauses while any settings window is open, including video, audio, date/time and power
+  management (*Interface settings*, on by default; turn it off to preview changes live).
 
 **Coming from melonDS?** On first run, RoarDS copies your settings from `melonDS.toml` into its own
 `RoarDS.toml`. Your melonDS install and settings are never changed.

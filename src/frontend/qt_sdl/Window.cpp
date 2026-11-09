@@ -1737,9 +1737,23 @@ void MainWindow::onFrameStep()
     emuThread->emuFrameStep();
 }
 
+// pause while a settings window that doesn't pause by itself is open, if the
+// user wants that. Closing the window undoes it; the emu thread's pause stack
+// keeps a manual pause in place.
+void MainWindow::pauseForSettingsWindow(QDialog* dlg)
+{
+    if (!dlg || !globalCfg.GetBool("PauseInSettings")) return;
+    if (dlg->property("roarPausedEmu").toBool()) return; // already open and paused
+
+    dlg->setProperty("roarPausedEmu", true);
+    emuThread->emuPause();
+    connect(dlg, &QDialog::finished, this, [this]() { emuThread->emuUnpause(); });
+}
+
 void MainWindow::onOpenDateTime()
 {
     DateTimeDialog* dlg = DateTimeDialog::openDlg(this);
+    pauseForSettingsWindow(dlg);
     connect(dlg, &DateTimeDialog::finished, this, &MainWindow::onDateTimeDialogFinished);
 }
 
@@ -1754,6 +1768,7 @@ void MainWindow::onDateTimeDialogFinished(int res)
 void MainWindow::onOpenPowerManagement()
 {
     PowerManagementDialog* dlg = PowerManagementDialog::openDlg(this);
+    pauseForSettingsWindow(dlg);
 }
 
 void MainWindow::onEnableCheats(bool checked)
@@ -1921,6 +1936,7 @@ void MainWindow::onInputConfigFinished(int res)
 void MainWindow::onOpenVideoSettings()
 {
     VideoSettingsDialog* dlg = VideoSettingsDialog::openDlg(this);
+    pauseForSettingsWindow(dlg);
     connect(dlg, &VideoSettingsDialog::updateVideoSettings, this, &MainWindow::onUpdateVideoSettings);
 }
 
@@ -1948,6 +1964,7 @@ void MainWindow::onCameraSettingsFinished(int res)
 void MainWindow::onOpenAudioSettings()
 {
     AudioSettingsDialog* dlg = AudioSettingsDialog::openDlg(this);
+    pauseForSettingsWindow(dlg);
     connect(emuThread, &EmuThread::syncVolumeLevel, dlg, &AudioSettingsDialog::onSyncVolumeLevel);
     connect(emuThread, &EmuThread::windowEmuStart, dlg, &AudioSettingsDialog::onConsoleReset);
     connect(dlg, &AudioSettingsDialog::updateAudioVolume, this, &MainWindow::onUpdateAudioVolume);
