@@ -15,14 +15,14 @@ FILETYPE VFT_APP
 		BLOCK "040904E4"
 		{
 			VALUE "CompanyName", "RoarDS"
-			VALUE "FileVersion", "${melonDS_VERSION}"
+			VALUE "FileVersion", "${ROARDS_VERSION}"
 			VALUE "FileDescription", "RoarDS emulator (based on melonDS)"
 			VALUE "InternalName", "RoarDS"
 			VALUE "LegalCopyright", "2016-2026 melonDS team, 2026 RoarDS contributors"
 			VALUE "LegalTrademarks", ""
 			VALUE "OriginalFilename", "RoarDS.exe"
 			VALUE "ProductName", "RoarDS"
-			VALUE "ProductVersion", "${melonDS_VERSION}"
+			VALUE "ProductVersion", "${ROARDS_VERSION}"
 		}
 	}
   BLOCK "VarFileInfo"

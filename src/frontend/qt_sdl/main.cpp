@@ -319,7 +319,7 @@ int main(int argc, char** argv)
     std::signal(SIGTERM, signalHandler);
 #endif
 
-    printf("RoarDS " MELONDS_VERSION "\n");
+    printf("RoarDS " ROARDS_VERSION " (based on melonDS " MELONDS_VERSION_BASE ")\n");
     printf(MELONDS_URL "\n");
 
     // easter egg - not worth checking other cases for something so dumb
