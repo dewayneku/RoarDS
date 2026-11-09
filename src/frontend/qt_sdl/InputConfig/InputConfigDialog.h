@@ -104,6 +104,26 @@ static constexpr std::initializer_list<const char*> hk_general_labels =
 
 static_assert(hk_general.size() == hk_general_labels.size());
 
+static constexpr std::initializer_list<int> hk_stylus =
+{
+    HK_StylusUp,
+    HK_StylusDown,
+    HK_StylusLeft,
+    HK_StylusRight,
+    HK_StylusTouch,
+};
+
+static constexpr std::initializer_list<const char*> hk_stylus_labels =
+{
+    "Move stylus up",
+    "Move stylus down",
+    "Move stylus left",
+    "Move stylus right",
+    "Touch screen",
+};
+
+static_assert(hk_stylus.size() == hk_stylus_labels.size());
+
 static constexpr std::initializer_list<int> hk_menu =
 {
     HK_SaveState1, HK_SaveState2, HK_SaveState3, HK_SaveState4,
@@ -200,6 +220,7 @@ private:
     int addonsKeyMap[hk_addons.size()], addonsJoyMap[hk_addons.size()];
     int hkGeneralKeyMap[hk_general.size()], hkGeneralJoyMap[hk_general.size()];
     int hkMenuKeyMap[hk_menu.size()], hkMenuJoyMap[hk_menu.size()];
+    int stylusKeyMap[hk_stylus.size()], stylusJoyMap[hk_stylus.size()];
     int joystickID;
 
     // controller profiles, edited in memory and written out on OK.

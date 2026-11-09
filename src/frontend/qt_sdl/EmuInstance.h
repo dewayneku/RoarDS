@@ -60,6 +60,13 @@ enum
     HK_GuitarGripRed,
     HK_GuitarGripYellow,
     HK_GuitarGripBlue,
+    // move the emulated stylus with a stick (analog) or any button/key,
+    // and touch the screen where the stylus cursor is
+    HK_StylusUp,
+    HK_StylusDown,
+    HK_StylusLeft,
+    HK_StylusRight,
+    HK_StylusTouch,
 
     // menu actions, handled on the UI thread by MainWindow::onMenuHotkey()
     // (everything from HK_SaveState1 to the end of this list)
@@ -206,6 +213,10 @@ public:
 
     void touchScreen(int x, int y);
     void releaseScreen();
+
+    // stylus cursor driven by the stylus hotkeys, in DS bottom-screen pixels.
+    // returns false when the cursor should not be drawn
+    bool getStylusCursor(int& x, int& y);
 
     // mic start/stop control from core
     void micStart();
@@ -403,6 +414,17 @@ private:
     int hkJoyMapping[HK_MAX];
 
     void applyJoyProfile();
+
+    float stylusInputAmount(int hotkey);
+    void stylusProcess();
+
+    // written by the emu thread, read by the screen panels
+    std::atomic<int> stylusX {128};
+    std::atomic<int> stylusY {96};
+    std::atomic<melonDS::u64> stylusVisibleUntil {0};
+    float stylusPosX = 128.f, stylusPosY = 96.f;
+    melonDS::u64 stylusLastTick = 0;
+    bool stylusTouching = false;
 
     std::vector<int> defaultJoyMapping;
     std::string instanceJoyProfile;

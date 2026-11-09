@@ -17,6 +17,7 @@
 */
 
 #include <algorithm>
+#include <cmath>
 #include <QKeyEvent>
 #include <SDL2/SDL.h>
 
@@ -69,6 +70,11 @@ const char* EmuInstance::hotkeyNames[HK_MAX] =
     "HK_GuitarGripRed",
     "HK_GuitarGripYellow",
     "HK_GuitarGripBlue",
+    "HK_StylusUp",
+    "HK_StylusDown",
+    "HK_StylusLeft",
+    "HK_StylusRight",
+    "HK_StylusTouch",
 
     "HK_SaveState1",
     "HK_SaveState2",
@@ -600,6 +606,8 @@ void EmuInstance::inputProcess()
     hotkeyPress = (hotkeyMask & ~lastHotkeyMask) | keyHotkeyLatch.exchange(0);
     hotkeyRelease = lastHotkeyMask & ~hotkeyMask;
     lastHotkeyMask = hotkeyMask;
+
+    stylusProcess();
     SDL_UnlockMutex(joyMutex.get());
 }
 
@@ -608,6 +616,108 @@ void EmuInstance::touchScreen(int x, int y)
     touchX = x;
     touchY = y;
     isTouching = true;
+
+    // mouse/touch input moves the stylus cursor too, so switching between
+    // the two doesn't make the cursor jump
+    if (!stylusTouching)
+    {
+        stylusPosX = (float)x;
+        stylusPosY = (float)y;
+        stylusX = x;
+        stylusY = y;
+    }
+}
+
+// how strongly a stylus hotkey is held, 0..1. An analog stick axis gives a
+// proportional value; keys, buttons and hats are all-or-nothing.
+// Called with joyMutex held.
+float EmuInstance::stylusInputAmount(int hotkey)
+{
+    float amount = 0.f;
+    if (keyHotkeyMask & (1ULL << hotkey))
+        amount = 1.f;
+
+    int val = hkJoyMapping[hotkey];
+    if (!joystick || val == -1)
+        return amount;
+
+    // button/hat part of the mapping
+    if (joystickButtonDown(val & ~0x10000))
+        amount = 1.f;
+
+    // axis part
+    if (val & 0x10000)
+    {
+        int axisnum = (val >> 24) & 0xF;
+        int axisdir = (val >> 20) & 0xF;
+        float axisval = SDL_JoystickGetAxis(joystick, axisnum) / 32767.f;
+
+        float a = 0.f;
+        if (axisdir == 0 || axisdir == 2) a = axisval;  // positive / trigger
+        else if (axisdir == 1) a = -axisval;            // negative
+
+        const float deadzone = 0.15f;
+        a = (a - deadzone) / (1.f - deadzone);
+        a = std::clamp(a, 0.f, 1.f);
+        amount = std::max(amount, a);
+    }
+
+    return amount;
+}
+
+// move the stylus cursor and handle the stylus touch button.
+// Called with joyMutex held, once per emu thread loop.
+void EmuInstance::stylusProcess()
+{
+    melonDS::u64 now = SDL_GetTicks64();
+    float dt = (stylusLastTick == 0) ? 0.f : (now - stylusLastTick) / 1000.f;
+    stylusLastTick = now;
+    if (dt > 0.1f) dt = 0.1f; // don't jump after a stall
+
+    float dx = stylusInputAmount(HK_StylusRight) - stylusInputAmount(HK_StylusLeft);
+    float dy = stylusInputAmount(HK_StylusDown) - stylusInputAmount(HK_StylusUp);
+
+    bool moving = (dx != 0.f || dy != 0.f);
+    if (moving)
+    {
+        // squared response: small tilts for precise aiming, full tilt crosses
+        // the screen width in about a second
+        const float speed = 256.f;
+        float mag = std::min(1.f, std::sqrt(dx*dx + dy*dy));
+        float scale = speed * mag * dt;
+
+        stylusPosX = std::clamp(stylusPosX + dx * scale, 0.f, 255.f);
+        stylusPosY = std::clamp(stylusPosY + dy * scale, 0.f, 191.f);
+        stylusX = (int)stylusPosX;
+        stylusY = (int)stylusPosY;
+    }
+
+    bool touchHeld = (hotkeyMask & (1ULL << HK_StylusTouch)) != 0;
+    if (touchHeld)
+    {
+        stylusTouching = true;
+        touchX = stylusX;
+        touchY = stylusY;
+        isTouching = true;
+    }
+    else if (stylusTouching)
+    {
+        stylusTouching = false;
+        isTouching = false;
+    }
+
+    if (moving || touchHeld)
+        stylusVisibleUntil = now + 2000;
+}
+
+bool EmuInstance::getStylusCursor(int& x, int& y)
+{
+    if (SDL_GetTicks64() >= stylusVisibleUntil)
+        return false;
+
+    x = stylusX;
+    y = stylusY;
+    return true;
 }
 
 void EmuInstance::releaseScreen()
