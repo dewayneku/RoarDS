@@ -180,6 +180,15 @@ public:
     {
     }
 
+    // re-read the mapping after it was changed from outside (profile switch)
+    void refreshText()
+    {
+        if (isChecked())
+            click(); // cancels a pending capture and redraws the text
+        else
+            setText(mappingText());
+    }
+
 protected:
     void showEvent(QShowEvent* event) override
     {

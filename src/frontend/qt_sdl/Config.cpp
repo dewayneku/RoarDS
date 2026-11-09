@@ -56,6 +56,7 @@ DefaultList<int> DefaultInts =
 {
     {"Instance*.Keyboard", -1},
     {"Instance*.Joystick", -1},
+    {"ControllerProfiles", -1},
     // default bindings for the menu-action hotkeys, matching the shortcuts
     // that used to be hardcoded in the menus
     {"Instance*.Keyboard.HK_SaveState1", (int)Qt::Key_F1 | (int)Qt::ShiftModifier},
@@ -583,6 +584,22 @@ Table Table::GetTable(const std::string& path, const std::string& defpath)
     }
 
     return Table(tbl, PathPrefix + path);
+}
+
+std::vector<std::string> Table::GetKeys()
+{
+    std::vector<std::string> ret;
+    if (!Data.is_table()) return ret;
+
+    for (auto& [key, val] : Data.as_table())
+        ret.push_back(key);
+    return ret;
+}
+
+void Table::Erase(const std::string& key)
+{
+    if (Data.is_table())
+        Data.as_table().erase(key);
 }
 
 int Table::GetInt(const std::string& path)

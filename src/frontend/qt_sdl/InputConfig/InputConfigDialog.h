@@ -21,7 +21,13 @@
 
 #include <QDialog>
 #include <QPushButton>
+#include <QComboBox>
+#include <QCheckBox>
 #include <initializer_list>
+#include <map>
+#include <set>
+#include <string>
+#include <vector>
 
 #include "Config.h"
 #include "EmuInstance.h"
@@ -167,7 +173,20 @@ private slots:
     void on_btnJoyMapSwitch_clicked();
     void on_cbxJoystick_currentIndexChanged(int id);
 
+    void onProfileChanged(int index);
+    void onProfileSaveAs();
+    void onProfileDelete();
+    void onProfileLinkToggled(bool checked);
+
 private:
+    void setupProfileUI();
+    std::vector<int> gatherJoyMappings();
+    void scatterJoyMappings(const std::vector<int>& mappings);
+    void showProfile(const std::string& name);
+    void updateProfileControls();
+    std::string profileForController(const std::string& guid);
+    std::string currentJoystickGUID();
+
     void populatePage(QWidget* page,
         const std::initializer_list<const char*>& labels,
         int* keymap, int* joymap);
@@ -182,6 +201,21 @@ private:
     int hkGeneralKeyMap[hk_general.size()], hkGeneralJoyMap[hk_general.size()];
     int hkMenuKeyMap[hk_menu.size()], hkMenuJoyMap[hk_menu.size()];
     int joystickID;
+
+    // controller profiles, edited in memory and written out on OK.
+    // the "" entry is this instance's own joystick mappings.
+    QComboBox* cbxProfile = nullptr;
+    QPushButton* btnProfileSaveAs = nullptr;
+    QPushButton* btnProfileDelete = nullptr;
+    QCheckBox* chkProfileLink = nullptr;
+    std::vector<class JoyMapButton*> joyButtons;
+    std::map<std::string, std::vector<int>> workingProfiles;
+    std::map<std::string, std::vector<int>> savedProfiles;
+    std::set<std::string> deletedProfiles;
+    std::map<std::string, std::string> workingLinks; // controller GUID -> profile
+    std::string instanceProfile;
+    std::string shownProfile;
+    bool updatingProfileUI = false;
 };
 
 

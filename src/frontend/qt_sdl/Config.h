@@ -25,6 +25,7 @@
 #include <unordered_map>
 #include <tuple>
 
+#include <vector>
 #include "toml/toml11/types.hpp"
 
 namespace Config
@@ -96,6 +97,10 @@ public:
 
     Array GetArray(const std::string& path);
     Table GetTable(const std::string& path, const std::string& defpath = "");
+
+    // keys directly inside this table, and removing one of them
+    std::vector<std::string> GetKeys();
+    void Erase(const std::string& key);
 
     int GetInt(const std::string& path);
     int64_t GetInt64(const std::string& path);

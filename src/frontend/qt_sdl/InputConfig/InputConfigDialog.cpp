@@ -21,6 +21,9 @@
 #include <QLabel>
 #include <QKeyEvent>
 #include <QDebug>
+#include <QHBoxLayout>
+#include <QInputDialog>
+#include <QMessageBox>
 
 #include <SDL2/SDL.h>
 
@@ -117,6 +120,7 @@ InputConfigDialog::InputConfigDialog(QWidget* parent) : QDialog(parent), ui(new 
     }
 
     setupKeypadPage();
+    setupProfileUI();
 
     int inst = emuInstance->getInstanceID();
     if (inst > 0)
@@ -139,6 +143,7 @@ void InputConfigDialog::setupKeypadPage()
 
         KeyMapButton* keyMapButtonKey = new KeyMapButton(&keypadKeyMap[i], false);
         JoyMapButton* keyMapButtonJoy = new JoyMapButton(&keypadJoyMap[i], false);
+        joyButtons.push_back(keyMapButtonJoy);
 
         pushButtonKey->parentWidget()->layout()->replaceWidget(pushButtonKey, keyMapButtonKey);
         pushButtonJoy->parentWidget()->layout()->replaceWidget(pushButtonJoy, keyMapButtonJoy);
@@ -192,6 +197,7 @@ void InputConfigDialog::populatePage(QWidget* page,
     {
         QLabel* label = new QLabel(QString(labelStr)+":");
         JoyMapButton* btn = new JoyMapButton(&joymap[i], ishotkey);
+        joyButtons.push_back(btn);
 
         group_layout->addWidget(label, i, 0);
         group_layout->addWidget(btn, i, 1);
@@ -206,7 +212,30 @@ void InputConfigDialog::populatePage(QWidget* page,
 
 void InputConfigDialog::on_InputConfigDialog_accepted()
 {
+    // the instance's own joystick mappings are what the "" entry holds;
+    // put them back in the arrays so they get saved below
+    workingProfiles[shownProfile] = gatherJoyMappings();
+    scatterJoyMappings(workingProfiles[""]);
+
+    Config::Table globalCfg = Config::GetGlobalTable();
+    Config::Table profiles = globalCfg.GetTable("ControllerProfiles");
+    for (const std::string& name : deletedProfiles)
+        profiles.Erase(name);
+    for (auto& [name, mappings] : workingProfiles)
+    {
+        if (name.empty()) continue;
+        Config::Table tbl = profiles.GetTable(name);
+        EmuInstance::writeJoyMappings(tbl, mappings);
+    }
+
+    Config::Table links = globalCfg.GetTable("ControllerLinks");
+    for (const std::string& guid : links.GetKeys())
+        links.Erase(guid);
+    for (auto& [guid, name] : workingLinks)
+        links.SetString(guid, name);
+
     Config::Table& instcfg = emuInstance->getLocalConfig();
+    instcfg.SetString("JoystickProfile", instanceProfile);
     Config::Table keycfg = instcfg.GetTable("Keyboard");
     Config::Table joycfg = instcfg.GetTable("Joystick");
 
@@ -277,6 +306,294 @@ void InputConfigDialog::on_cbxJoystick_currentIndexChanged(int id)
 
     joystickID = id;
     emuInstance->setJoystick(id);
+
+    // a different controller may have its own profile
+    if (!cbxProfile) return; // still being set up
+    workingProfiles[shownProfile] = gatherJoyMappings();
+    showProfile(profileForController(currentJoystickGUID()));
+}
+
+static const char* kDefaultProfileLabel = "(this instance's own mappings)";
+
+void InputConfigDialog::setupProfileUI()
+{
+    QHBoxLayout* row = new QHBoxLayout();
+    QLabel* label = new QLabel("Controller profile:");
+    cbxProfile = new QComboBox();
+    cbxProfile->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
+    cbxProfile->setToolTip("Named sets of joystick mappings, shared by all instances.\n"
+                           "Edits are saved to the selected profile when you press OK.");
+    btnProfileSaveAs = new QPushButton("Save as new...");
+    btnProfileDelete = new QPushButton("Delete");
+    row->addWidget(label);
+    row->addWidget(cbxProfile);
+    row->addWidget(btnProfileSaveAs);
+    row->addWidget(btnProfileDelete);
+
+    chkProfileLink = new QCheckBox("Always use this profile when this controller is connected");
+    chkProfileLink->setToolTip("Links the profile to this kind of controller, so it loads automatically "
+                               "whenever the controller is plugged in or selected.");
+
+    // the joystick selector is row 7 and the button box row 8; put the
+    // profile controls between them
+    ui->gridLayout_4->removeWidget(ui->buttonBox);
+    ui->gridLayout_4->addLayout(row, 8, 0, 1, 2);
+    ui->gridLayout_4->addWidget(chkProfileLink, 9, 0, 1, 2);
+    ui->gridLayout_4->addWidget(ui->buttonBox, 10, 0, 1, 2);
+
+    // load everything into memory
+    shownProfile = "";
+    workingProfiles[""] = gatherJoyMappings();
+
+    Config::Table globalCfg = Config::GetGlobalTable();
+    Config::Table profiles = globalCfg.GetTable("ControllerProfiles");
+    for (const std::string& name : profiles.GetKeys())
+    {
+        if (name.empty()) continue;
+        Config::Table tbl = profiles.GetTable(name);
+        workingProfiles[name] = EmuInstance::readJoyMappings(tbl);
+    }
+    savedProfiles = workingProfiles;
+
+    Config::Table links = globalCfg.GetTable("ControllerLinks");
+    for (const std::string& guid : links.GetKeys())
+    {
+        std::string name = links.GetString(guid);
+        if (!name.empty() && workingProfiles.count(name))
+            workingLinks[guid] = name;
+    }
+
+    instanceProfile = emuInstance->getLocalConfig().GetString("JoystickProfile");
+    if (!workingProfiles.count(instanceProfile))
+        instanceProfile = "";
+
+    updatingProfileUI = true;
+    cbxProfile->addItem(kDefaultProfileLabel);
+    for (auto& [name, mappings] : workingProfiles)
+    {
+        if (!name.empty())
+            cbxProfile->addItem(QString::fromStdString(name));
+    }
+    updatingProfileUI = false;
+
+    connect(cbxProfile, &QComboBox::currentIndexChanged, this, &InputConfigDialog::onProfileChanged);
+    connect(btnProfileSaveAs, &QPushButton::clicked, this, &InputConfigDialog::onProfileSaveAs);
+    connect(btnProfileDelete, &QPushButton::clicked, this, &InputConfigDialog::onProfileDelete);
+    connect(chkProfileLink, &QCheckBox::toggled, this, &InputConfigDialog::onProfileLinkToggled);
+
+    showProfile(profileForController(currentJoystickGUID()));
+}
+
+std::vector<int> InputConfigDialog::gatherJoyMappings()
+{
+    // start from what's stored so hotkeys not shown in this dialog are kept
+    std::vector<int> ret;
+    auto it = workingProfiles.find(shownProfile);
+    if (it != workingProfiles.end() && it->second.size() == EmuInstance::kJoyMappingCount)
+        ret = it->second;
+    else
+        ret.assign(EmuInstance::kJoyMappingCount, -1);
+
+    for (int i = 0; i < keypad_num; i++)
+        ret[dskeyorder[i]] = keypadJoyMap[i];
+
+    int i = 0;
+    for (int hotkey : hk_addons) ret[12 + hotkey] = addonsJoyMap[i++];
+    i = 0;
+    for (int hotkey : hk_general) ret[12 + hotkey] = hkGeneralJoyMap[i++];
+    i = 0;
+    for (int hotkey : hk_menu) ret[12 + hotkey] = hkMenuJoyMap[i++];
+
+    return ret;
+}
+
+void InputConfigDialog::scatterJoyMappings(const std::vector<int>& mappings)
+{
+    if (mappings.size() != EmuInstance::kJoyMappingCount) return;
+
+    for (int i = 0; i < keypad_num; i++)
+        keypadJoyMap[i] = mappings[dskeyorder[i]];
+
+    int i = 0;
+    for (int hotkey : hk_addons) addonsJoyMap[i++] = mappings[12 + hotkey];
+    i = 0;
+    for (int hotkey : hk_general) hkGeneralJoyMap[i++] = mappings[12 + hotkey];
+    i = 0;
+    for (int hotkey : hk_menu) hkMenuJoyMap[i++] = mappings[12 + hotkey];
+
+    for (JoyMapButton* btn : joyButtons)
+        btn->refreshText();
+}
+
+// show a profile's mappings in the editors (the current edits must already
+// have been stored in workingProfiles)
+void InputConfigDialog::showProfile(const std::string& name)
+{
+    std::string target = workingProfiles.count(name) ? name : "";
+    shownProfile = target;
+    scatterJoyMappings(workingProfiles[target]);
+
+    updatingProfileUI = true;
+    int idx = target.empty() ? 0 : cbxProfile->findText(QString::fromStdString(target));
+    cbxProfile->setCurrentIndex(idx < 0 ? 0 : idx);
+    updatingProfileUI = false;
+
+    updateProfileControls();
+}
+
+void InputConfigDialog::updateProfileControls()
+{
+    std::string guid = currentJoystickGUID();
+    bool isProfile = !shownProfile.empty();
+
+    btnProfileDelete->setEnabled(isProfile);
+
+    updatingProfileUI = true;
+    auto it = workingLinks.find(guid);
+    chkProfileLink->setChecked(!guid.empty() && it != workingLinks.end() && it->second == shownProfile);
+    chkProfileLink->setEnabled(isProfile && !guid.empty());
+    updatingProfileUI = false;
+}
+
+std::string InputConfigDialog::profileForController(const std::string& guid)
+{
+    auto it = workingLinks.find(guid);
+    if (!guid.empty() && it != workingLinks.end())
+        return it->second;
+    return instanceProfile;
+}
+
+std::string InputConfigDialog::currentJoystickGUID()
+{
+    if (!ui->cbxJoystick->isEnabled()) return "";
+    return EmuInstance::joystickGUIDForIndex(joystickID);
+}
+
+void InputConfigDialog::onProfileChanged(int index)
+{
+    if (updatingProfileUI) return;
+
+    workingProfiles[shownProfile] = gatherJoyMappings();
+    std::string name = (index <= 0) ? "" : cbxProfile->itemText(index).toStdString();
+
+    // if this controller has a linked profile, the link follows the
+    // selection; otherwise the selection becomes this instance's profile
+    std::string guid = currentJoystickGUID();
+    if (!guid.empty() && workingLinks.count(guid))
+    {
+        if (name.empty())
+            workingLinks.erase(guid);
+        else
+            workingLinks[guid] = name;
+    }
+    else
+        instanceProfile = name;
+
+    showProfile(name);
+}
+
+void InputConfigDialog::onProfileSaveAs()
+{
+    QString suggestion = ui->cbxJoystick->isEnabled() ? ui->cbxJoystick->currentText() : "My profile";
+
+    for (;;)
+    {
+        bool ok = false;
+        QString qname = QInputDialog::getText(this, "Save controller profile",
+            "Save the current joystick mappings as a new profile named:",
+            QLineEdit::Normal, suggestion, &ok);
+        if (!ok) return;
+
+        qname = qname.trimmed();
+        suggestion = qname;
+        QString problem;
+        if (qname.isEmpty())
+            problem = "Please enter a name.";
+        else if (qname.contains('.') || qname.contains('"') || qname.contains('\\'))
+            problem = "Profile names can't contain periods, quotes or backslashes.";
+        else if (qname.length() > 48)
+            problem = "Please use a name of 48 characters or fewer.";
+        else if (qname == kDefaultProfileLabel || workingProfiles.count(qname.toStdString()))
+            problem = "A profile with that name already exists.";
+
+        if (!problem.isEmpty())
+        {
+            QMessageBox::warning(this, "Save controller profile", problem);
+            continue;
+        }
+
+        std::string name = qname.toStdString();
+
+        // the edits go to the new profile; the profile they were made on
+        // goes back to how it was
+        std::vector<int> mappings = gatherJoyMappings();
+        if (savedProfiles.count(shownProfile))
+            workingProfiles[shownProfile] = savedProfiles[shownProfile];
+        workingProfiles[name] = mappings;
+        deletedProfiles.erase(name);
+
+        // keep the list sorted the same way std::map is
+        int pos = 1;
+        while (pos < cbxProfile->count() && cbxProfile->itemText(pos).toStdString() < name)
+            pos++;
+        updatingProfileUI = true;
+        cbxProfile->insertItem(pos, qname);
+        updatingProfileUI = false;
+
+        std::string guid = currentJoystickGUID();
+        if (!guid.empty() && workingLinks.count(guid))
+            workingLinks[guid] = name;
+        else
+            instanceProfile = name;
+
+        showProfile(name);
+        return;
+    }
+}
+
+void InputConfigDialog::onProfileDelete()
+{
+    if (shownProfile.empty()) return;
+
+    QString qname = QString::fromStdString(shownProfile);
+    if (QMessageBox::question(this, "Delete controller profile",
+            QString("Delete the profile \"%1\"? It's removed when you press OK.").arg(qname))
+        != QMessageBox::Yes)
+        return;
+
+    std::string name = shownProfile;
+    workingProfiles.erase(name);
+    deletedProfiles.insert(name);
+    for (auto it = workingLinks.begin(); it != workingLinks.end(); )
+    {
+        if (it->second == name) it = workingLinks.erase(it);
+        else ++it;
+    }
+    if (instanceProfile == name)
+        instanceProfile = "";
+
+    updatingProfileUI = true;
+    cbxProfile->removeItem(cbxProfile->findText(qname));
+    updatingProfileUI = false;
+
+    shownProfile = "";
+    showProfile(profileForController(currentJoystickGUID()));
+}
+
+void InputConfigDialog::onProfileLinkToggled(bool checked)
+{
+    if (updatingProfileUI) return;
+
+    std::string guid = currentJoystickGUID();
+    if (guid.empty() || shownProfile.empty()) return;
+
+    if (checked)
+        workingLinks[guid] = shownProfile;
+    else
+    {
+        workingLinks.erase(guid);
+        instanceProfile = shownProfile;
+    }
 }
 
 SDL_Joystick* InputConfigDialog::getJoystick()

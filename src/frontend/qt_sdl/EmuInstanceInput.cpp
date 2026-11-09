@@ -16,6 +16,7 @@
     with melonDS. If not, see http://www.gnu.org/licenses/.
 */
 
+#include <algorithm>
 #include <QKeyEvent>
 #include <SDL2/SDL.h>
 
@@ -145,15 +146,45 @@ void EmuInstance::inputLoadConfig()
     Config::Table joycfg = localCfg.GetTable("Joystick");
 
     for (int i = 0; i < 12; i++)
-    {
         keyMapping[i] = keycfg.GetInt(buttonNames[i]);
-        joyMapping[i] = joycfg.GetInt(buttonNames[i]);
-    }
 
     for (int i = 0; i < HK_MAX; i++)
-    {
         hkKeyMapping[i] = keycfg.GetInt(hotkeyNames[i]);
-        hkJoyMapping[i] = joycfg.GetInt(hotkeyNames[i]);
+
+    // joystick mappings come from this instance's own table, unless a
+    // controller profile applies (see applyJoyProfile)
+    defaultJoyMapping = readJoyMappings(joycfg);
+
+    Config::Table globalCfg = Config::GetGlobalTable();
+    Config::Table profiles = globalCfg.GetTable("ControllerProfiles");
+    std::vector<std::string> profileNames = profiles.GetKeys();
+    auto profileExists = [&](const std::string& name)
+    {
+        return std::find(profileNames.begin(), profileNames.end(), name) != profileNames.end();
+    };
+
+    instanceJoyProfile = localCfg.GetString("JoystickProfile");
+    instanceJoyProfileMapping.clear();
+    if (!instanceJoyProfile.empty())
+    {
+        if (profileExists(instanceJoyProfile))
+        {
+            Config::Table tbl = profiles.GetTable(instanceJoyProfile);
+            instanceJoyProfileMapping = readJoyMappings(tbl);
+        }
+        else
+            instanceJoyProfile = "";
+    }
+
+    linkedJoyProfiles.clear();
+    Config::Table links = globalCfg.GetTable("ControllerLinks");
+    for (const std::string& guid : links.GetKeys())
+    {
+        std::string name = links.GetString(guid);
+        if (!profileExists(name)) continue;
+
+        Config::Table tbl = profiles.GetTable(name);
+        linkedJoyProfiles[guid] = {name, readJoyMappings(tbl)};
     }
 
     setJoystick(localCfg.GetInt("JoystickID"));
@@ -241,6 +272,79 @@ float EmuInstance::inputMotionQuery(melonDS::Platform::MotionQueryType type)
 }
 
 
+std::vector<int> EmuInstance::readJoyMappings(Config::Table& table)
+{
+    std::vector<int> ret(kJoyMappingCount);
+    for (int i = 0; i < 12; i++)
+        ret[i] = table.GetInt(buttonNames[i]);
+    for (int i = 0; i < HK_MAX; i++)
+        ret[12 + i] = table.GetInt(hotkeyNames[i]);
+    return ret;
+}
+
+void EmuInstance::writeJoyMappings(Config::Table& table, const std::vector<int>& mappings)
+{
+    for (int i = 0; i < 12; i++)
+        table.SetInt(buttonNames[i], mappings[i]);
+    for (int i = 0; i < HK_MAX; i++)
+        table.SetInt(hotkeyNames[i], mappings[12 + i]);
+}
+
+std::string EmuInstance::joystickGUIDForIndex(int index)
+{
+    if (index < 0 || index >= SDL_NumJoysticks())
+        return "";
+
+    char buf[33];
+    SDL_JoystickGetGUIDString(SDL_JoystickGetDeviceGUID(index), buf, sizeof(buf));
+    return buf;
+}
+
+std::string EmuInstance::getActiveJoyProfile()
+{
+    SDL_LockMutex(joyMutex.get());
+    std::string ret = activeJoyProfile;
+    SDL_UnlockMutex(joyMutex.get());
+    return ret;
+}
+
+// pick the joystick mappings for the open controller: a profile linked to
+// this controller type wins, then this instance's chosen profile, then the
+// instance's own mappings. Called with joyMutex held.
+void EmuInstance::applyJoyProfile()
+{
+    const std::vector<int>* mappings = &defaultJoyMapping;
+    std::string name;
+
+    if (joystick)
+    {
+        char buf[33];
+        SDL_JoystickGetGUIDString(SDL_JoystickGetGUID(joystick), buf, sizeof(buf));
+        auto it = linkedJoyProfiles.find(buf);
+        if (it != linkedJoyProfiles.end())
+        {
+            name = it->second.first;
+            mappings = &it->second.second;
+        }
+    }
+
+    if (name.empty() && !instanceJoyProfileMapping.empty())
+    {
+        name = instanceJoyProfile;
+        mappings = &instanceJoyProfileMapping;
+    }
+
+    if (mappings->size() == kJoyMappingCount)
+    {
+        for (int i = 0; i < 12; i++)
+            joyMapping[i] = (*mappings)[i];
+        for (int i = 0; i < HK_MAX; i++)
+            hkJoyMapping[i] = (*mappings)[12 + i];
+    }
+
+    activeJoyProfile = name;
+}
+
 void EmuInstance::setJoystick(int id)
 {
     SDL_LockMutex(joyMutex.get());
@@ -251,9 +355,7 @@ void EmuInstance::setJoystick(int id)
 
 void EmuInstance::openJoystick()
 {
-    if (controller) SDL_GameControllerClose(controller);
-
-    if (joystick) SDL_JoystickClose(joystick);
+    closeJoystick();
 
     int num = SDL_NumJoysticks();
     if (num < 1)
@@ -263,6 +365,7 @@ void EmuInstance::openJoystick()
         hasRumble = false;
         hasAccelerometer = false;
         hasGyroscope = false;
+        applyJoyProfile();
         return;
     }
 
@@ -291,6 +394,8 @@ void EmuInstance::openJoystick()
             hasGyroscope = SDL_GameControllerSetSensorEnabled(controller, SDL_SENSOR_GYRO, SDL_TRUE) == 0;
         }
     }
+
+    applyJoyProfile();
 }
 
 void EmuInstance::closeJoystick()
@@ -467,6 +572,8 @@ void EmuInstance::inputProcess()
     if (!joystick && (SDL_NumJoysticks() > 0))
     {
         openJoystick();
+        if (joystick && !activeJoyProfile.empty())
+            osdAddMessage(0, "Controller profile: %s", activeJoyProfile.c_str());
     }
 
     joyInputMask = 0xFFF;
