@@ -22,6 +22,7 @@
 #include <QKeyEvent>
 #include <QDebug>
 #include <QHBoxLayout>
+#include <QVBoxLayout>
 #include <QInputDialog>
 #include <QMessageBox>
 
@@ -86,6 +87,15 @@ InputConfigDialog::InputConfigDialog(QWidget* parent) : QDialog(parent), ui(new 
         i++;
     }
 
+    i = 0;
+    for (int hotkey : hk_stylus)
+    {
+        const char* btn = EmuInstance::hotkeyNames[hotkey];
+        stylusKeyMap[i] = keycfg.GetInt(btn);
+        stylusJoyMap[i] = joycfg.GetInt(btn);
+        i++;
+    }
+
     populatePage(ui->tabAddons, hk_addons_labels, addonsKeyMap, addonsJoyMap);
     populatePage(ui->tabHotkeysGeneral, hk_general_labels, hkGeneralKeyMap, hkGeneralJoyMap);
 
@@ -99,6 +109,23 @@ InputConfigDialog::InputConfigDialog(QWidget* parent) : QDialog(parent), ui(new 
         scroll->setWidgetResizable(true);
         scroll->setFrameShape(QFrame::NoFrame);
         ui->tabWidget->addTab(scroll, "Save states && menu");
+    }
+
+    {
+        QWidget* stylusPage = new QWidget();
+        populatePage(stylusPage, hk_stylus_labels, stylusKeyMap, stylusJoyMap);
+
+        QVBoxLayout* outer = new QVBoxLayout();
+        QLabel* hint = new QLabel("Map the four directions to a stick to move the stylus like a mouse "
+                                  "pointer (the further you push, the faster it moves), and \"Touch "
+                                  "screen\" to a button to tap or hold at the cursor. Keys work too.");
+        hint->setWordWrap(true);
+        outer->addWidget(hint);
+        outer->addWidget(stylusPage, 1);
+
+        QWidget* tab = new QWidget();
+        tab->setLayout(outer);
+        ui->tabWidget->addTab(tab, "Stylus");
     }
 
     joystickID = instcfg.GetInt("JoystickID");
@@ -273,6 +300,15 @@ void InputConfigDialog::on_InputConfigDialog_accepted()
         i++;
     }
 
+    i = 0;
+    for (int hotkey : hk_stylus)
+    {
+        const char* btn = EmuInstance::hotkeyNames[hotkey];
+        keycfg.SetInt(btn, stylusKeyMap[i]);
+        joycfg.SetInt(btn, stylusJoyMap[i]);
+        i++;
+    }
+
     instcfg.SetInt("JoystickID", joystickID);
     Config::Save();
 
@@ -403,6 +439,8 @@ std::vector<int> InputConfigDialog::gatherJoyMappings()
     for (int hotkey : hk_general) ret[12 + hotkey] = hkGeneralJoyMap[i++];
     i = 0;
     for (int hotkey : hk_menu) ret[12 + hotkey] = hkMenuJoyMap[i++];
+    i = 0;
+    for (int hotkey : hk_stylus) ret[12 + hotkey] = stylusJoyMap[i++];
 
     return ret;
 }
@@ -420,6 +458,8 @@ void InputConfigDialog::scatterJoyMappings(const std::vector<int>& mappings)
     for (int hotkey : hk_general) hkGeneralJoyMap[i++] = mappings[12 + hotkey];
     i = 0;
     for (int hotkey : hk_menu) hkMenuJoyMap[i++] = mappings[12 + hotkey];
+    i = 0;
+    for (int hotkey : hk_stylus) stylusJoyMap[i++] = mappings[12 + hotkey];
 
     for (JoyMapButton* btn : joyButtons)
         btn->refreshText();

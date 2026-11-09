@@ -152,6 +152,11 @@ protected:
     void osdUpdate();
 
     void calcSplashLayout();
+
+    // where to draw the stick-driven stylus cursor, in widget coordinates
+    bool stylusCursorPos(QPointF& pos);
+    static QImage makeStylusCursorImage();
+    static constexpr int kStylusCursorSize = 17;
 };
 
 
@@ -178,6 +183,7 @@ private:
 
     QImage screen[2];
     QTransform screenTrans[kMaxScreenTransforms];
+    QImage stylusCursor;
 };
 
 
@@ -236,6 +242,7 @@ private:
     GLuint osdVertexArray;
     GLuint osdVertexBuffer;
     std::map<unsigned int, GLuint> osdTextures;
+    GLuint stylusCursorTexture = 0;
 
     GLuint logoTexture;
 

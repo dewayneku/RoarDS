@@ -756,8 +756,57 @@ void ScreenPanel::calcSplashLayout()
 
 
 
+bool ScreenPanel::stylusCursorPos(QPointF& pos)
+{
+    int x, y;
+    if (!emuInstance->getStylusCursor(x, y))
+        return false;
+
+    for (int i = 0; i < numScreens; i++)
+    {
+        if (screenKind[i] != 1) continue;
+
+        // centre of the DS pixel, mapped through the bottom screen's transform
+        const float* m = screenMatrix[i];
+        float fx = x + 0.5f, fy = y + 0.5f;
+        pos.setX(m[0] * fx + m[2] * fy + m[4]);
+        pos.setY(m[1] * fx + m[3] * fy + m[5]);
+        return true;
+    }
+
+    return false;
+}
+
+// a white crosshair with a dark outline; only black and white are used so
+// the GL path doesn't care about RGBA/BGRA order
+QImage ScreenPanel::makeStylusCursorImage()
+{
+    const int s = kStylusCursorSize;
+    const int c = s / 2;
+    QImage img(s, s, QImage::Format_ARGB32_Premultiplied);
+    img.fill(Qt::transparent);
+
+    QPainter p(&img);
+    p.setRenderHint(QPainter::Antialiasing, false);
+    auto arms = [&](const QColor& col, int w)
+    {
+        p.fillRect(c - w, 0, 2*w + 1, c - 2, col);
+        p.fillRect(c - w, c + 3, 2*w + 1, s - c - 3, col);
+        p.fillRect(0, c - w, c - 2, 2*w + 1, col);
+        p.fillRect(c + 3, c - w, s - c - 3, 2*w + 1, col);
+    };
+    arms(QColor(0, 0, 0, 200), 1);
+    arms(QColor(255, 255, 255), 0);
+    p.fillRect(c - 1, c - 1, 3, 3, QColor(0, 0, 0, 200));
+    p.fillRect(c, c, 1, 1, QColor(255, 255, 255));
+    p.end();
+
+    return img;
+}
+
 ScreenPanelNative::ScreenPanelNative(QWidget* parent) : ScreenPanel(parent)
 {
+    stylusCursor = makeStylusCursorImage();
     hasBuffers = false;
 
     screen[0] = QImage(256, 192, QImage::Format_RGB32);
@@ -830,6 +879,14 @@ void ScreenPanelNative::paintEvent(QPaintEvent* event)
             painter.drawImage(screenrc, screen[screenKind[i]]);
         }
         emuInstance->renderLock.unlock();
+
+        QPointF cursorPos;
+        if (stylusCursorPos(cursorPos))
+        {
+            painter.resetTransform();
+            int half = kStylusCursorSize / 2;
+            painter.drawImage(QPoint((int)cursorPos.x() - half, (int)cursorPos.y() - half), stylusCursor);
+        }
     }
 
     osdUpdate();
@@ -1026,6 +1083,16 @@ void ScreenPanelGL::initOpenGL()
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, logo.width(), logo.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, logo.bits());
     logoTexture = tex;
 
+    // stylus cursor texture
+    QImage cursor = makeStylusCursorImage();
+    glGenTextures(1, &stylusCursorTexture);
+    glBindTexture(GL_TEXTURE_2D, stylusCursorTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cursor.width(), cursor.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, cursor.bits());
+
     transferLayout();
     glInited = true;
 }
@@ -1055,6 +1122,8 @@ void ScreenPanelGL::deinitOpenGL()
     glDeleteBuffers(1, &osdVertexBuffer);
 
     glDeleteTextures(1, &logoTexture);
+    glDeleteTextures(1, &stylusCursorTexture);
+    stylusCursorTexture = 0;
 
     glDeleteProgram(osdShader);
 
@@ -1222,6 +1291,31 @@ void ScreenPanelGL::drawScreen()
         glUseProgram(0);
 
         osdMutex.unlock();
+    }
+
+    QPointF cursorPos;
+    if (emuThread->emuIsActive() && stylusCursorTexture && stylusCursorPos(cursorPos))
+    {
+        int half = kStylusCursorSize / 2;
+
+        glUseProgram(osdShader);
+        glUniform2f(osdScreenSizeULoc, w, h);
+        glUniform1f(osdScaleFactorULoc, factor);
+        glUniform1f(osdTexScaleULoc, 1.0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, osdVertexBuffer);
+        glBindVertexArray(osdVertexArray);
+        glActiveTexture(GL_TEXTURE0);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+        glBindTexture(GL_TEXTURE_2D, stylusCursorTexture);
+        glUniform2i(osdPosULoc, (int)cursorPos.x() - half, (int)cursorPos.y() - half);
+        glUniform2i(osdSizeULoc, kStylusCursorSize, kStylusCursorSize);
+        glDrawArrays(GL_TRIANGLES, 0, 2*3);
+
+        glDisable(GL_BLEND);
+        glUseProgram(0);
     }
 
     if (osdEnabled)
