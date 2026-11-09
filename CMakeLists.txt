@@ -22,6 +22,10 @@ project(melonDS
     HOMEPAGE_URL "https://github.com/dewayneku/RoarDS"
     LANGUAGES C CXX)
 
+# RoarDS's own version, shown in the UI and the app's file properties.
+# The project version above stays the melonDS version RoarDS is based on.
+set(ROARDS_VERSION 0.1.0)
+
 include(CheckSymbolExists)
 include(CheckLibraryExists)
 include(CMakeDependentOption)
