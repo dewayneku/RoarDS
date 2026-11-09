@@ -23,6 +23,7 @@ by Arisotura and the melonDS team, focused on quality-of-life improvements that 
   or drag with a button (*Input and hotkeys → Stylus*). Speed follows how far the stick is pushed.
 * The game pauses while any settings window is open, including video, audio, date/time and power
   management (*Interface settings*, on by default; turn it off to preview changes live).
+* Backspace can be bound like any other key. Right-click a mapping to clear it; Esc cancels.
 
 **Coming from melonDS?** On first run, RoarDS copies your settings from `melonDS.toml` into its own
 `RoarDS.toml`. Your melonDS install and settings are never changed.

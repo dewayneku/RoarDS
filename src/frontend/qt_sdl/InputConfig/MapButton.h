@@ -20,6 +20,7 @@
 #define MAPBUTTON_H
 
 #include <QPushButton>
+#include <QMouseEvent>
 
 #include <SDL2/SDL.h>
 
@@ -40,6 +41,7 @@ public:
 
         setCheckable(true);
         setText(mappingText());
+        setToolTip("Click, then press the key or button to use.\nEsc cancels. Right-click clears the mapping.");
         setFocusPolicy(Qt::StrongFocus); //Fixes binding keys in macOS
 
         connect(this, &KeyMapButton::clicked, this, &KeyMapButton::onClick);
@@ -64,11 +66,9 @@ protected:
                       key == Qt::Key_Shift ||
                       key == Qt::Key_Meta);
 
-        if (!mod)
-        {
-            if (key == Qt::Key_Escape) { click(); return; }
-            if (key == Qt::Key_Backspace) { *mapping = -1; click(); return; }
-        }
+        // Escape cancels; every other key, Backspace included, can be bound.
+        // Right-click clears a mapping.
+        if (!mod && key == Qt::Key_Escape) { click(); return; }
 
         if (isHotkey)
         {
@@ -83,6 +83,22 @@ protected:
 
         *mapping = key;
         click();
+    }
+
+
+    // right-click clears the mapping (and cancels a capture in progress)
+    void mousePressEvent(QMouseEvent* event) override
+    {
+        if (event->button() == Qt::RightButton)
+        {
+            if (isChecked()) click();
+            *mapping = -1;
+            setText(mappingText());
+            event->accept();
+            return;
+        }
+
+        QPushButton::mousePressEvent(event);
     }
 
     void focusOutEvent(QFocusEvent* event) override
@@ -169,6 +185,7 @@ public:
 
         setCheckable(true);
         setText(mappingText());
+        setToolTip("Click, then press the key or button to use.\nEsc cancels. Right-click clears the mapping.");
         setFocusPolicy(Qt::StrongFocus); //Fixes binding keys in macOS
 
         connect(this, &JoyMapButton::clicked, this, &JoyMapButton::onClick);
@@ -216,6 +233,22 @@ protected:
             if (key == Qt::Key_Escape) { click(); return; }
             if (key == Qt::Key_Backspace) { *mapping = -1; click(); return; }
         }
+    }
+
+
+    // right-click clears the mapping (and cancels a capture in progress)
+    void mousePressEvent(QMouseEvent* event) override
+    {
+        if (event->button() == Qt::RightButton)
+        {
+            if (isChecked()) click();
+            *mapping = -1;
+            setText(mappingText());
+            event->accept();
+            return;
+        }
+
+        QPushButton::mousePressEvent(event);
     }
 
     void focusOutEvent(QFocusEvent* event) override
