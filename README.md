@@ -16,6 +16,9 @@ by Arisotura and the melonDS team, focused on quality-of-life improvements that 
 * Custom screen gap of any size from 0 to 500 px (*View → Screen gap → Custom...*), applied instantly.
 * Hotkeys to cycle the screen layout and screen sizing (*Input and hotkeys → General hotkeys*).
 * Hotkeys respond to very quick taps, even with no game running.
+* **Controller profiles**: save named sets of joystick mappings and switch between them
+  (*Input and hotkeys → Controller profile*). A profile can be linked to a type of controller so it
+  loads automatically whenever that controller is connected.
 
 **Coming from melonDS?** On first run, RoarDS copies your settings from `melonDS.toml` into its own
 `RoarDS.toml`. Your melonDS install and settings are never changed.

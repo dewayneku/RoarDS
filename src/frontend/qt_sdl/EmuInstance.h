@@ -21,6 +21,9 @@
 
 #include <SDL2/SDL.h>
 #include <atomic>
+#include <string>
+#include <vector>
+#include <map>
 
 #include "Platform.h"
 #include "main.h"
@@ -190,6 +193,16 @@ public:
     int getJoystickID() { return joystickID; }
     SDL_Joystick* getJoystick() { return joystick; }
     std::shared_ptr<SDL_mutex> getJoyMutex() { return joyMutex; }
+
+    // controller profiles: named joystick mapping sets, stored globally under
+    // ControllerProfiles.<name>, optionally linked to a controller type
+    // (SDL GUID) under ControllerLinks.<guid>. Mapping vectors hold the 12
+    // DS buttons (buttonNames order) followed by the HK_MAX hotkeys.
+    static constexpr int kJoyMappingCount = 12 + HK_MAX;
+    static std::vector<int> readJoyMappings(Config::Table& table);
+    static void writeJoyMappings(Config::Table& table, const std::vector<int>& mappings);
+    static std::string joystickGUIDForIndex(int index);
+    std::string getActiveJoyProfile();
 
     void touchScreen(int x, int y);
     void releaseScreen();
@@ -388,6 +401,14 @@ private:
     int joyMapping[12];
     int hkKeyMapping[HK_MAX];
     int hkJoyMapping[HK_MAX];
+
+    void applyJoyProfile();
+
+    std::vector<int> defaultJoyMapping;
+    std::string instanceJoyProfile;
+    std::vector<int> instanceJoyProfileMapping;
+    std::map<std::string, std::pair<std::string, std::vector<int>>> linkedJoyProfiles;
+    std::string activeJoyProfile;
 
     int joystickID;
     SDL_Joystick* joystick;
