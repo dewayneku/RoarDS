@@ -375,7 +375,12 @@ void InputConfigDialog::setupProfileUI()
     ui->gridLayout_4->removeWidget(ui->buttonBox);
     ui->gridLayout_4->addLayout(row, 8, 0, 1, 2);
     ui->gridLayout_4->addWidget(chkProfileLink, 9, 0, 1, 2);
-    ui->gridLayout_4->addWidget(ui->buttonBox, 10, 0, 1, 2);
+
+    QLabel* hint = new QLabel("Click a mapping, then press a key or button. Esc cancels; right-click a mapping to clear it.");
+    hint->setWordWrap(true);
+    hint->setEnabled(false); // greyed-out help text
+    ui->gridLayout_4->addWidget(hint, 10, 0, 1, 2);
+    ui->gridLayout_4->addWidget(ui->buttonBox, 11, 0, 1, 2);
 
     // load everything into memory
     shownProfile = "";
