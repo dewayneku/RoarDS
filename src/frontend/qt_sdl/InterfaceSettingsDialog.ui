@@ -91,6 +91,16 @@
        </widget>
       </item>
       <item>
+       <widget class="QCheckBox" name="cbPauseInSettings">
+        <property name="toolTip">
+         <string>Also pauses while the video, audio, date/time and power management windows are open. With this off, changes there can be previewed while the game runs. Other settings windows always pause.</string>
+        </property>
+        <property name="text">
+         <string>Pause emulation while any settings window is open</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QCheckBox" name="cbMuteFastForward">
         <property name="text">
          <string>Mute audio while fast forwarding</string>

@@ -132,6 +132,7 @@ DefaultList<bool> DefaultBools =
     {"3D.Soft.Threaded", true},
     {"3D.GL.HiresCoordinates", true},
     {"LimitFPS", true},
+    {"PauseInSettings", true},
     {"Instance*.Window*.ShowOSD", true},
     {"Emu.DirectBoot", true},
     {"Instance*.DS.Battery.LevelOkay", true},

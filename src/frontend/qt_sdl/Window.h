@@ -125,6 +125,7 @@ private slots:
     void onStop();
     void onFrameStep();
     void onOpenPowerManagement();
+    void pauseForSettingsWindow(QDialog* dlg);
     void onOpenDateTime();
     void onDateTimeDialogFinished(int res);
     void onEnableCheats(bool checked);
