@@ -475,13 +475,20 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
                     actScreenGap[i]->setCheckable(true);
                 }
 
+                submenu->addSeparator();
+                actScreenGapCustom = submenu->addAction("Custom...");
+                actScreenGapCustom->setActionGroup(grpScreenGap);
+                actScreenGapCustom->setData(QVariant(-1));
+                actScreenGapCustom->setCheckable(true);
+
                 connect(grpScreenGap, &QActionGroup::triggered, this, &MainWindow::onChangeScreenGap);
             }
             {
                 QMenu * submenu = menu->addMenu("Screen layout");
                 grpScreenLayout = new QActionGroup(submenu);
 
-                const char *screenlayout[] = {"Natural", "Vertical", "Horizontal", "Hybrid"};
+                const char *screenlayout[] = {"Natural", "Vertical", "Horizontal", "Hybrid", "Overlap"};
+                static_assert(sizeof(screenlayout) / sizeof(screenlayout[0]) == screenLayout_MAX);
 
                 for (int i = 0; i < screenLayout_MAX; i++)
                 {
@@ -696,15 +703,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
 
         actScreenRotation[windowCfg.GetInt("ScreenRotation")]->setChecked(true);
 
-        int screenGap = windowCfg.GetInt("ScreenGap");
-        for (int i = 0; i < 6; i++)
-        {
-            if (actScreenGap[i]->data().toInt() == screenGap)
-            {
-                actScreenGap[i]->setChecked(true);
-                break;
-            }
-        }
+        updateScreenGapMenu();
 
         actScreenLayout[windowCfg.GetInt("ScreenLayout")]->setChecked(true);
         actScreenSizing[windowCfg.GetInt("ScreenSizing")]->setChecked(true);
@@ -1652,6 +1651,13 @@ void MainWindow::onMenuHotkey(int hotkey)
     case HK_UndoStateLoad: act = actUndoStateLoad; break;
     case HK_OpenROM:       act = actOpenROM; break;
     case HK_Quit:          act = actQuit; break;
+
+    case HK_CycleScreenLayout:
+        act = actScreenLayout[(windowCfg.GetInt("ScreenLayout") + 1) % screenLayout_MAX];
+        break;
+    case HK_CycleScreenSizing:
+        act = actScreenSizing[(windowCfg.GetInt("ScreenSizing") + 1) % screenSizing_MAX];
+        break;
     }
 
     // trigger() is a no-op for disabled actions, so e.g. saving
@@ -2081,9 +2087,45 @@ void MainWindow::onChangeScreenRotation(QAction* act)
 void MainWindow::onChangeScreenGap(QAction* act)
 {
     int gap = act->data().toInt();
+
+    if (act == actScreenGapCustom)
+    {
+        bool ok = false;
+        gap = QInputDialog::getInt(this, "Screen gap - RoarDS",
+                                   "Gap between the screens, in pixels (0-500):",
+                                   windowCfg.GetInt("ScreenGap"), 0, 500, 1, &ok);
+        if (!ok)
+        {
+            // cancelled: put the check mark back on the current setting
+            updateScreenGapMenu();
+            return;
+        }
+    }
+
     windowCfg.SetInt("ScreenGap", gap);
+    updateScreenGapMenu();
 
     emit screenLayoutChange();
+}
+
+void MainWindow::updateScreenGapMenu()
+{
+    if (!hasMenu) return;
+
+    // check the preset matching the current gap, or "Custom" showing its value
+    int screenGap = windowCfg.GetInt("ScreenGap");
+    for (int i = 0; i < 6; i++)
+    {
+        if (actScreenGap[i]->data().toInt() == screenGap)
+        {
+            actScreenGap[i]->setChecked(true);
+            actScreenGapCustom->setText("Custom...");
+            return;
+        }
+    }
+
+    actScreenGapCustom->setChecked(true);
+    actScreenGapCustom->setText(QString("Custom (%1 px)...").arg(screenGap));
 }
 
 void MainWindow::onChangeScreenLayout(QAction* act)

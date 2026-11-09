@@ -25,6 +25,7 @@ enum ScreenLayoutType
     screenLayout_Vertical,
     screenLayout_Horizontal,
     screenLayout_Hybrid,
+    screenLayout_Overlap, // main screen fills the display, other screen shown small in a corner on top
     screenLayout_MAX,
 };
 
@@ -89,6 +90,13 @@ public:
     bool GetTouchCoords(int& x, int& y, bool clamp);
 
 private:
+    // Overlap layout: separate from Setup()'s main path to keep upstream code untouched
+    void SetupOverlap(int screenWidth, int screenHeight,
+                      ScreenRotation rotation,
+                      bool integerScale,
+                      bool swapScreens,
+                      float topAspect, float botAspect);
+
     float TopScreenMtx[6];
     float BotScreenMtx[6];
     float HybScreenMtx[6];
@@ -99,6 +107,10 @@ private:
     bool HybEnable;
     int HybScreen;
     int HybPrevTouchScreen; // 0:unknown, 1:buttom screen, 2:hybrid screen
+
+    bool OverlapEnable;
+    bool OverlapMainBottom;   // true: bottom screen is the big one, top screen is the overlay
+    float OverlayRect[4];     // overlay bounds on the host display: minX, minY, maxX, maxY
 };
 
 #endif // SCREENLAYOUT_H

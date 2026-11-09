@@ -282,6 +282,8 @@ public:
     QAction* actScreenRotation[screenRot_MAX];
     QActionGroup* grpScreenGap;
     QAction* actScreenGap[6];
+    QAction* actScreenGapCustom;
+    void updateScreenGapMenu();
     QActionGroup* grpScreenLayout;
     QAction* actScreenLayout[screenLayout_MAX];
     QAction* actScreenSwap;

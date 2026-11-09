@@ -198,6 +198,12 @@ QSize ScreenPanel::screenGetMinSize(int factor = 1)
         return QSize(w, h);
     }
 
+    if (screenLayout == screenLayout_Overlap)
+    {
+        // one full-size screen; the overlay sits on top of it
+        return isHori ? QSize(h, w) : QSize(w, h);
+    }
+
     if (screenLayout == screenLayout_Natural)
     {
         if (isHori)

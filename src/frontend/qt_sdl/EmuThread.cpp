@@ -170,8 +170,8 @@ void EmuThread::run()
         if (emuInstance->hotkeyPressed(HK_SwapScreens)) emit swapScreensToggle();
         if (emuInstance->hotkeyPressed(HK_SwapScreenEmphasis)) emit screenEmphasisToggle();
 
-        // menu actions (save/load state, open ROM, quit) run on the UI thread
-        for (int hk = HK_SaveState1; hk <= HK_Quit; hk++)
+        // menu actions (save/load state, open ROM, quit, screen layout) run on the UI thread
+        for (int hk = HK_SaveState1; hk < HK_MAX; hk++)
             if (emuInstance->hotkeyPressed(hk)) emit windowMenuHotkey(hk);
 
         if (emuStatus == emuStatus_Running || emuStatus == emuStatus_FrameStep)
